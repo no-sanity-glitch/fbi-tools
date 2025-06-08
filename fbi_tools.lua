@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.2')
+script_version('1.0.3')
 
 local enable_autoupdate = true -- false to disable auto-update + disable sending initial telemetry (server, moonloader version, script version, samp nickname, virtual volume serial number)
 local autoupdate_loaded = false
@@ -12,8 +12,8 @@ if enable_autoupdate then
         autoupdate_loaded, Update = pcall(Updater)
         if autoupdate_loaded then
             Update.json_url =
-            "https://raw.githubusercontent.com/no-sanity-glitch/fbi-tools/refs/heads/main/version.json?" ..
-            tostring(os.clock())
+                "https://raw.githubusercontent.com/no-sanity-glitch/fbi-tools/refs/heads/main/version.json?" ..
+                tostring(os.clock())
             Update.prefix = "[" .. string.upper(thisScript().name) .. "]: "
             Update.url = "https://github.com/no-sanity-glitch/fbi-tools/"
         end
@@ -627,8 +627,6 @@ end
 -------------------Auto Find----------------------
 
 function cmdFind(arg)
-    if not auto_find_state.v or not auto_find.state then return end
-
     local id = tonumber(arg)
     if not id then
         sampAddChatMessage("[Tools] {ff0000}Неверный{ffffff} ID игрока.", main_color)
@@ -640,7 +638,10 @@ function cmdFind(arg)
     auto_find.zoneDestroyed = false
     auto_find.checkpointDisabled = false
 
-    printStringNow("~b~~h~~h~~h~Find: ~b~~h~~h~ enabled", 1600)
+    if auto_find_state.v and auto_find.state then
+        printStringNow("~b~~h~~h~~h~Find: ~b~~h~~h~ enabled", 1600)
+    end
+
     sampSendChat("/find " .. id)
 end
 
