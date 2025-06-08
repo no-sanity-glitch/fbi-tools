@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.4')
+script_version('1.0.5')
 
 local enable_autoupdate = true -- false to disable auto-update + disable sending initial telemetry (server, moonloader version, script version, samp nickname, virtual volume serial number)
 local autoupdate_loaded = false
@@ -102,6 +102,8 @@ local auto_fix_state = imgui.ImBool(mainIni.state.auto_fix)
 ----- LOCAL PARAMENTS -----
 local main_color = mainIni.config.intImGui
 local statusSsMode = false
+local blackout_textdraw_id = nil
+local blackout = false
 
 local elements = {
     checkbox = {
@@ -249,10 +251,12 @@ function main()
     end)
     -- Команда для очистки чата
     sampRegisterChatCommand('cc', function()
-        for i = 1, 99 do
+        for i = 1, 30 do
             sampAddChatMessage('', -1)
         end
     end)
+
+    sampRegisterChatCommand("blackout", blackout)
 
     sampRegisterChatCommand("find", cmdFind)
     sampRegisterChatCommand("findoff", cmdFindOff)
@@ -517,6 +521,38 @@ function logFilteredMessage(color, text)
     sampfuncsLog(logText)
 end
 
+---------------------Black screen----------------------
+
+function blackout()
+    blackout = not blackout
+
+    if blackout then
+        if not blackout_textdraw_id then
+            for i = 1, 10000 do
+                if not sampTextdrawIsExists(i) then
+                    blackout_textdraw_id = i
+                    break
+                end
+            end
+        end
+
+        if blackout_textdraw_id then
+            sampTextdrawCreate(blackout_textdraw_id, "usebox", -7.0, -7.0)
+            sampTextdrawSetLetterSizeAndColor(blackout_textdraw_id, 0.475, 55.0, 0x00000000)
+            sampTextdrawSetBoxColorAndSize(blackout_textdraw_id, 1, 0xFF000000, 900.0, 900.0)
+            sampTextdrawSetShadow(blackout_textdraw_id, 0, 0xFF000000)
+            sampTextdrawSetOutlineColor(blackout_textdraw_id, 1, 0xFF000000)
+            sampTextdrawSetAlign(blackout_textdraw_id, 1)
+            sampTextdrawSetProportional(blackout_textdraw_id, 1)
+        end
+    else
+        if id_blackout then
+            sampTextdrawDelete(blackout_textdraw_id)
+            blackout_textdraw_id = nil
+        end
+    end
+end
+
 ------------------------------------------------
 
 ---- Приветстиве -------
@@ -532,6 +568,7 @@ local changelog10 = [[
 9. Добавлена авто починка и заправка в гос. гаражах.
 10. Добавлен вызов подкрепления и предложение о выдачи звёзд при стрельбе.
 11. Добавлено автообновление скрипта.
+12. Добавлен чёрный экран для ссок.
 ]]
 
 local authors = [[
@@ -802,6 +839,7 @@ function imgui.OnDrawFrame()
         if imgui.Button(u8 'Auto Alert', imgui.ImVec2(155, 30)) then menu = 2 end
         if imgui.Button(u8 'Auto Find', imgui.ImVec2(155, 30)) then menu = 3 end
         if imgui.Button(u8 'Auto Fix (experimental)', imgui.ImVec2(155, 30)) then menu = 4 end
+        if imgui.Button(u8 'SS Tools', imgui.ImVec2(155, 30)) then menu = 5 end
         if imgui.Button(u8 'Спец.Клавиши', imgui.ImVec2(155, 30)) then menu = 9 end
         if imgui.Button(u8 'Настройки', imgui.ImVec2(155, 30)) then menu = 10 end
         imgui.EndChild()
@@ -929,6 +967,11 @@ function imgui.OnDrawFrame()
             imgui.Text(u8 "Автопочинка и автозаправка")
             imgui.SameLine()
             imgui.HelpMarker(u8 "Автопочинка и автозаправка в гос.гаражах. Для починки нужно заглушить двигатель.")
+        end
+        if menu == 5 then
+            imgui.Text(u8 "/ss - только IC чат (удаление ad, админских строк, PayDay, /r, /d, OOC чатов).")
+            imgui.Text(u8 "/сс - очистить чат.")
+            imgui.Text(u8 "/blackout - чёрный экран.")
         end
         if menu == 9 then
             -- callback 1
