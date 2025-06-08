@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.0')
+script_version('1.0.1')
 
 local enable_autoupdate = true -- false to disable auto-update + disable sending initial telemetry (server, moonloader version, script version, samp nickname, virtual volume serial number)
 local autoupdate_loaded = false
@@ -528,13 +528,14 @@ local changelog10 = [[
 8. Добавлен авто поиск преступника.
 9. Добавлена авто починка и заправка в гос. гаражах.
 10. Добавлен вызов подкрепления и предложение о выдачи звёзд при стрельбе.
+11. Добавлено автообновление скрипта.
 ]]
 
 local authors = [[
 
     Спасибо за помощь:
     — Dave Grand (красивая imgui менюшка, стробоскопы, смена погоды);
-    — Amelia Brown (режим IC-only чата и очистка чата).
+    — Amelia Brown (режим IC-only чата и его очистка).
 ]]
 
 function menu_0()
