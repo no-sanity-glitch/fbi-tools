@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.5')
+script_version('1.0.6')
 
 local enable_autoupdate = true -- false to disable auto-update + disable sending initial telemetry (server, moonloader version, script version, samp nickname, virtual volume serial number)
 local autoupdate_loaded = false
@@ -546,7 +546,7 @@ function blackout()
             sampTextdrawSetProportional(blackout_textdraw_id, 1)
         end
     else
-        if id_blackout then
+        if blackout_textdraw_id then
             sampTextdrawDelete(blackout_textdraw_id)
             blackout_textdraw_id = nil
         end
