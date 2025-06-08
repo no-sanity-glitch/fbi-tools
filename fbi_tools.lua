@@ -221,9 +221,6 @@ function stroboscopes(adress, ptr, _1, _2, _3, _4) -- функция стробоскопов
     callMethod(adress, ptr, _1, _2, _3, _4)
 end
 
-  git config --global user.email "you@example.com"
-  git config --global user.name "Your Name"
-
 --------------------------------------------------------------
 
 function main()
