@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.6')
+script_version('1.0.7')
 
 local enable_autoupdate = true -- false to disable auto-update + disable sending initial telemetry (server, moonloader version, script version, samp nickname, virtual volume serial number)
 local autoupdate_loaded = false
@@ -767,7 +767,7 @@ function isFillRequired()
     if not auto_fix_state.v then return end
     if not sampTextdrawIsExists(2133) then return end
     local fuel = tonumber(sampTextdrawGetString(2133):match("(%d+)[,.]?%d*"))
-    return fuel < 95
+    return fuel and fuel < 95
 end
 
 function sampev.onCreate3DText(id, _, _, _, _, _, _, text)
