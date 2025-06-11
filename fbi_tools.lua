@@ -79,7 +79,7 @@ local mainIni = inicfg.load({
         main_menu = encodeJson({ vkeys.VK_F2 }),
         battlepass = encodeJson({ vkeys.VK_F3 }),
         backup = encodeJson({ vkeys.VK_U }),
-        su = encodeJson({ vkeys.VK_I }),
+        su = encodeJson({ vkeys.VK_I })
     },
     state = {
         auto_alert = false,
@@ -136,7 +136,7 @@ local HotKeys = {
     main_menu = { v = decodeJson(mainIni.hotkeys.main_menu) },
     battlepass = { v = decodeJson(mainIni.hotkeys.battlepass) },
     backup = { v = decodeJson(mainIni.hotkeys.backup) },
-    su = { v = decodeJson(mainIni.hotkeys.su) },
+    su = { v = decodeJson(mainIni.hotkeys.su) }
 }
 
 -- Mutex lock
@@ -207,11 +207,11 @@ function stroboscopes(adress, ptr, _1, _2, _3, _4) -- функция стробоскопов
     callMethod(adress, ptr, _1, _2, _3, _4)
 end
 
-
 function main()
     while not isSampAvailable() do wait(100) end
-    if autoupdate_loaded and enable_autoupdate and Update then pcall(Update.check, Update.json_url, Update.prefix,
-            Update.url) end
+    if autoupdate_loaded and enable_autoupdate and Update then
+        pcall(Update.check, Update.json_url, Update.prefix, Update.url)
+    end
 
     registerChatCommands()
     registerHotkeys()
@@ -257,7 +257,7 @@ function registerChatCommands()
 end
 
 function registerHotkeys()
-    ID_MAIN_MENU = rkeys.registerHotKey(HotKeys.main_menu.v, 1, main_menu)
+    ID_MAIN_MENU = rkeys.registerHotKey(HotKeys.main_menu.v, 1, mainMenu)
     ID_BATTLEPASS = rkeys.registerHotKey(HotKeys.battlepass.v, 1, battlepass)
     ID_BACKUP = rkeys.registerHotKey(HotKeys.backup.v, 1, backup)
     ID_SU = rkeys.registerHotKey(HotKeys.su.v, 1, su)
@@ -549,7 +549,7 @@ function welcomeMenu()
     imgui.Text(u8(authors))
 
     imgui.Separator()
-    if imgui.CollapsingHeader('Version 1.0') then
+    if imgui.CollapsingHeader('Version 1.0.0') then
         imgui.Text(u8(changelog10))
     end
     imgui.Separator()
@@ -726,7 +726,7 @@ end
 
 function imgui.OnDrawFrame()
     setColorScheme()
-    if State.main_window.v then      renderMainWindow() end
+    if State.main_window.v then renderMainWindow() end
 end
 
 function setColorScheme()
@@ -895,7 +895,7 @@ function menu_2()
     imgui.HelpMarker(u8 "Используйте #zone для указания района. Например: Требуется подкрепление. Район #zone.")
 
     State.auto_alert_backup_text_buffer.v = mainIni.config.backup_text:gsub("%%s", "#zone")
-    if imgui.InputText(u8 '', State.auto_alert_backup_text_buffer) then         -- условие будет срабатывать при изменении текста
+    if imgui.InputText(u8 '', State.auto_alert_backup_text_buffer) then
         local backup_text = State.auto_alert_backup_text_buffer.v:gsub("#zone", "%%s")
         mainIni.config.backup_text = backup_text
         inicfg.save(mainIni, 'Tools.ini')
@@ -965,7 +965,7 @@ function menu_9()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
-    imgui.Text(u8 'Изменить кнопку активацию меню')
+    imgui.Text(u8 'Изменить кнопку активации меню')
     -- battlepass
     if imgui.HotKey("##HotKeys.battlepass", HotKeys.battlepass) then
         rkeys.changeHotKey(ID_BATTLEPASS, HotKeys.battlepass.v)
@@ -974,7 +974,7 @@ function menu_9()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
-    imgui.Text(u8 'Изменить кнопку активацию battlepass')
+    imgui.Text(u8 'Изменить кнопку активации Battle Pass')
 end
 
 function menu_10()
