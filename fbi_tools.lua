@@ -1,8 +1,38 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.7')
+script_version('1.0.8')
 
-local enable_autoupdate = true -- false to disable auto-update + disable sending initial telemetry (server, moonloader version, script version, samp nickname, virtual volume serial number)
+local CONFIG = {
+    AUTO_UPDATE = true,
+    ALERT_INTERVAL = 30,  -- seconds
+    BACKUP_INTERVAL = 10, -- seconds
+    SU_INTERVAL = 900,    -- 15 minutes
+    VEHICLE_HEALTH_THRESHOLDS = {
+        [5000] = true,
+        [4000] = true,
+        [3000] = true,
+        [2000] = true
+    },
+    AUTO_FIND_DELAYS = { -- I need actual data !
+        [1] = 80,
+        [2] = 70,
+        [3] = 60,
+        [4] = 50,
+        [5] = 40,
+        [6] = 30,
+        [7] = 20,
+        [8] = 10,
+        [9] = 5,
+        [10] = 0
+    },
+    QUIT_REASONS = {
+        [0] = 'потеря связи/краш',
+        [1] = 'вышел из игры',
+        [2] = 'кикнул сервер/забанили'
+    }
+}
+
+local enable_autoupdate = CONFIG.AUTO_UPDATE
 local autoupdate_loaded = false
 local Update = nil
 if enable_autoupdate then
@@ -22,7 +52,6 @@ end
 
 require "lib.moonloader"
 local imgui = require "imgui"
-local encoding = require "encoding"
 local inicfg = require 'inicfg'
 local ImVec2 = imgui.ImVec2
 local ImVec4 = imgui.ImVec4
@@ -30,10 +59,87 @@ local imadd = require 'imgui_addons'
 local sampev = require 'lib.samp.events'
 local vkeys = require "vkeys"
 local rkeys = require 'rkeys'
-local sampev = require("lib.samp.events")
-imgui.HotKey = require('imgui_addons').HotKey
+imgui.HotKey = imadd.HotKey
+local fa = require 'faIcons'
+local fa_glyph_ranges = imgui.ImGlyphRanges({ fa.min_range, fa.max_range })
+local encoding = require "encoding"
+encoding.default = "CP1251"
+u8 = encoding.UTF8
 
---------------------------------
+local mainIni = inicfg.load({
+    config = {
+        intImGui = 0,
+        backup_text = "Требуется подкрепление. Район %s.",
+        auto_find_level_selected = 10,
+    },
+    admin = {
+        nameTitle = false,
+    },
+    hotkeys = {
+        main_menu = encodeJson({ vkeys.VK_F2 }),
+        battlepass = encodeJson({ vkeys.VK_F3 }),
+        backup = encodeJson({ vkeys.VK_U }),
+        su = encodeJson({ vkeys.VK_I }),
+    },
+    state = {
+        auto_alert = false,
+        auto_find = false,
+        auto_fix = false,
+        stroboscopes = false,
+    }
+}, 'Tools')
+
+local State = {
+    main_window = imgui.ImBool(false),
+    CheckBoxDialogID = imgui.ImBool(false),
+    straboscopes = imgui.ImBool(mainIni.state.stroboscopes),
+    auto_alert_state = imgui.ImBool(mainIni.state.auto_alert),
+    auto_alert_backup_text_buffer = imgui.ImBuffer(256),
+    auto_find_state = imgui.ImBool(mainIni.state.auto_find),
+    auto_fix_state = imgui.ImBool(mainIni.state.auto_fix),
+    menu = 0,
+    blackout = false,
+    blackout_textdraw_id = nil,
+    statusSsMode = false,
+    main_color = mainIni.config.intImGui
+}
+
+local AutoAlert = {
+    lastGlobalBackupTime = 0,
+    attackerCooldowns = {},
+    suCooldowns = {},
+    pendingAttacker = nil,
+    pendingExpireTime = 0
+}
+
+local AutoFind = {
+    state = false,
+    targetId = nil,
+    zoneDestroyed = false,
+    checkpointDisabled = false
+}
+
+local AutoFix = {
+    lastCheckTime = 0,
+    fillTexts = {},
+    tehvehTexts = {},
+    isFilling = false
+}
+
+local elements = {
+    checkbox = {},
+    static = { nameStatis = imgui.ImBool(mainIni.admin.nameTitle) },
+    int = { intImGui = imgui.ImInt(mainIni.config.intImGui) },
+}
+
+local HotKeys = {
+    main_menu = { v = decodeJson(mainIni.hotkeys.main_menu) },
+    battlepass = { v = decodeJson(mainIni.hotkeys.battlepass) },
+    backup = { v = decodeJson(mainIni.hotkeys.backup) },
+    su = { v = decodeJson(mainIni.hotkeys.su) },
+}
+
+-- Mutex lock
 
 local locks = {}
 
@@ -47,11 +153,7 @@ function synchronized(name, fn)
     end)
 end
 
---------------------------------
-
------------ FA ICONS -----------
-local fa = require 'faIcons'
-local fa_glyph_ranges = imgui.ImGlyphRanges({ fa.min_range, fa.max_range })
+-- FontAwesome Icons
 
 function imgui.BeforeDrawFrame()
     if fa_font == nil then
@@ -62,133 +164,12 @@ function imgui.BeforeDrawFrame()
     end
 end
 
---------------------------------
-
-local mainIni = inicfg.load({
-    config = {
-        intImGui = 0,
-        backup_text = "Требуется подкрепление. Район %s.",
-        auto_find_level_selected = 10,
-    },
-    admin = {
-        nameTitle = false,
-    },
-    hotkeys = {
-        callback_1 = encodeJson({ vkeys.VK_F2 }),
-        battlepass = encodeJson({ vkeys.VK_F3 }),
-        backup = encodeJson({ vkeys.VK_U }),
-        su = encodeJson({ vkeys.VK_I }),
-    },
-    state = {
-        auto_alert = false,
-        auto_find = false,
-        auto_fix = false,
-        stroboscopes = false,
-    }
-}, 'Tools')
-
-encoding.default = "CP1251"
-u8 = encoding.UTF8
-
------ GLOBAL PARAMENTS -----
-local main_window = imgui.ImBool(false)
-local CheckBoxDialogID = imgui.ImBool(false)
-local straboscopes = imgui.ImBool(mainIni.state.stroboscopes)
-local auto_alert_state = imgui.ImBool(mainIni.state.auto_alert)
-local auto_alert_backup_text_buffer = imgui.ImBuffer(256)
-local auto_find_state = imgui.ImBool(mainIni.state.auto_find)
-local auto_fix_state = imgui.ImBool(mainIni.state.auto_fix)
-
------ LOCAL PARAMENTS -----
-local main_color = mainIni.config.intImGui
-local statusSsMode = false
-local blackout_textdraw_id = nil
-local blackout = false
-
-local elements = {
-    checkbox = {
-
-    },
-    static = {
-        nameStatis = imgui.ImBool(mainIni.admin.nameTitle)
-    },
-    int = {
-        intImGui = imgui.ImInt(mainIni.config.intImGui)
-    },
-}
-
-local auto_alert = {
-    lastGlobalBackupTime = 0,
-    attackerCooldowns = {}, -- [playerId] = lastAlertTime
-    suCooldowns = {},       -- [playerId] = lastSuTime
-    ALERT_INTERVAL = 30,    -- seconds
-    BACKUP_INTERVAL = 10,   -- seconds
-    SU_INTERVAL = 900,      -- 15 minutes
-    pendingAttacker = nil,
-    pendingExpireTime = 0,
-}
-
-local auto_find = {
-    state = false,
-    targetId = nil,
-    zoneDestroyed = false,
-    checkpointDisabled = false
-}
-
-local auto_find_delay_by_level = {
-    [1] = 80,
-    [2] = 70,
-    [3] = 60,
-    [4] = 50,
-    [5] = 40,
-    [6] = 30,
-    [7] = 20,
-    [8] = 10,
-    [9] = 5,
-    [10] = 0
-}
-
-local quit_reasons = {
-    [0] = 'потеря связи/краш',
-    [1] = 'вышел из игры',
-    [2] = 'кикнул сервер/забанили'
-}
-
-local auto_fix = {
-    fillTexts = {},
-    tehvehTexts = {},
-    isFilling = false,
-}
-
-local vehHealth = {
-    [5000] = true,
-    [4000] = true,
-    [3000] = true,
-    [2000] = true
-}
-
-local lastCheckTime = 0
-
 function save()
     inicfg.save(mainIni, 'Tools.ini')
 end
 
-local HotKeys = {
-    callback_1 = {
-        v = decodeJson(mainIni.hotkeys.callback_1)
-    },
-    battlepass = {
-        v = decodeJson(mainIni.hotkeys.battlepass)
-    },
-    backup = {
-        v = decodeJson(mainIni.hotkeys.backup)
-    },
-    su = {
-        v = decodeJson(mainIni.hotkeys.su)
-    },
-}
+-- Stroboscopes
 
------------------Stroboscopes-------------------
 local carsStoroscopes = {}
 function table.contains(data, func)
     for k, v in pairs(data) do
@@ -226,49 +207,42 @@ function stroboscopes(adress, ptr, _1, _2, _3, _4) -- функция стробоскопов
     callMethod(adress, ptr, _1, _2, _3, _4)
 end
 
---------------------------------------------------------------
 
 function main()
     while not isSampAvailable() do wait(100) end
+    if autoupdate_loaded and enable_autoupdate and Update then pcall(Update.check, Update.json_url, Update.prefix,
+            Update.url) end
 
-    if autoupdate_loaded and enable_autoupdate and Update then
-        pcall(Update.check, Update.json_url, Update.prefix, Update.url)
-    end
+    registerChatCommands()
+    registerHotkeys()
+    initializeMainThread()
 
     sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Активирован.", -1)
     sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Открыть меню - {AC0046}/tt", -1)
+end
+
+function registerChatCommands()
     sampRegisterChatCommand('tt', function()
-        main_window.v = not main_window.v
+        State.main_window.v = not State.main_window.v
         menu = 0
     end)
 
     sampRegisterChatCommand("sw", cmdSetWeather)
-
-    -- Команда для включения/выключения основного скрипта
-    sampRegisterChatCommand('ss', function()
-        statusSsMode = not statusSsMode
-        printStringNow(statusSsMode and 'RPChat ~g~ON' or 'RPChat ~r~OFF', 1000)
-    end)
-    -- Команда для очистки чата
-    sampRegisterChatCommand('cc', function()
-        for i = 1, 30 do
-            sampAddChatMessage('', -1)
-        end
-    end)
-
     sampRegisterChatCommand("blackout", blackout)
-
     sampRegisterChatCommand("find", cmdFind)
     sampRegisterChatCommand("findoff", cmdFindOff)
 
-    ID_CALLBACK_1 = rkeys.registerHotKey(HotKeys.callback_1.v, 1, callback_1)
-    ID_BATTLEPASS = rkeys.registerHotKey(HotKeys.battlepass.v, 1, battlepass)
-    ID_BACKUP = rkeys.registerHotKey(HotKeys.backup.v, 1, backup)
-    ID_SU = rkeys.registerHotKey(HotKeys.su.v, 1, su)
+    sampRegisterChatCommand('ss', function()
+        State.statusSsMode = not State.statusSsMode
+        printStringNow(State.statusSsMode and 'RPChat ~g~ON' or 'RPChat ~r~OFF', 1000)
+    end)
 
+    sampRegisterChatCommand('cc', function()
+        for i = 1, 30 do sampAddChatMessage('', -1) end
+    end)
 
     sampRegisterChatCommand("strobes", function()
-        if straboscopes.v then
+        if State.straboscopes.v then
             if isCharInAnyCar(PLAYER_PED) then
                 local car = storeCarCharIsInNoSave(PLAYER_PED)
                 local driverPed = getDriverOfCar(car)
@@ -280,100 +254,106 @@ function main()
             end
         end
     end)
+end
 
+function registerHotkeys()
+    ID_MAIN_MENU = rkeys.registerHotKey(HotKeys.main_menu.v, 1, main_menu)
+    ID_BATTLEPASS = rkeys.registerHotKey(HotKeys.battlepass.v, 1, battlepass)
+    ID_BACKUP = rkeys.registerHotKey(HotKeys.backup.v, 1, backup)
+    ID_SU = rkeys.registerHotKey(HotKeys.su.v, 1, su)
+end
+
+function initializeMainThread()
     lua_thread.create(function()
         while true do
-            imgui.Process = main_window.v
-
-            -- if wasKeyPressed(113) then main_window.v = not main_window.v end
-            -- imgui.Process = main_window.v
-
-            if straboscopes.v then
-                if wasKeyPressed(VK_P) and not sampIsChatInputActive() and not sampIsDialogActive() then
-                    if isCharInAnyCar(PLAYER_PED) and
-                        not isCharInAnyBoat(PLAYER_PED) and
-                        not isCharInAnyHeli(PLAYER_PED) and
-                        not isCharInAnyPlane(PLAYER_PED) and
-                        not isCharOnAnyBike(PLAYER_PED) and
-                        not isCharInAnyTrain(PLAYER_PED) then
-                        local carHandle = storeCarCharIsInNoSave(PLAYER_PED)
-                        if getDriverOfCar(carHandle) == PLAYER_PED then
-                            local res, id = sampGetVehicleIdByCarHandle(carHandle)
-                            if res then
-                                local structure = getCarPointer(carHandle)
-                                structure = structure + 1440
-                                if carsStoroscopes[id] ~= nil then
-                                    carsStoroscopes[id]:terminate()
-                                    carsStoroscopes[id] = nil
-                                    callMethod(7086336, structure, 2, 0, 0, 0)
-                                    callMethod(7086336, structure, 2, 0, 1, 0)
-                                else
-                                    carsStoroscopes[id] = lua_thread.create_suspended(function()
-                                        while true do
-                                            callMethod(7086336, structure, 2, 0, 1, 0)
-                                            callMethod(7086336, structure, 2, 0, 0, 1)
-                                            wait(100)
-                                            callMethod(7086336, structure, 2, 0, 0, 0)
-                                            callMethod(7086336, structure, 2, 0, 1, 1)
-                                            wait(100)
-                                        end
-                                    end)
-                                    carsStoroscopes[id]:run()
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-
-            if auto_fix_state.v then
-                if isCharInAnyCar(PLAYER_PED) and getDriverOfCar(storeCarCharIsInNoSave(PLAYER_PED)) == PLAYER_PED then
-                    if not lastCheckTime or os.clock() - lastCheckTime > 0.3 then
-                        lastCheckTime = os.clock()
-
-                        local px, py, pz = getCharCoordinates(PLAYER_PED)
-
-                        if isFillRequired() then
-                            for id, _ in pairs(auto_fix.fillTexts) do
-                                local result, _, x, y, z, _, _, _, _ = sampGet3dTextInfoById(id)
-                                if result and getDistanceBetweenCoords3d(px, py, pz, x, y, z) < 9.0 then
-                                    sampSendChat("/fill")
-                                    auto_fix.isFilling = true
-                                else
-                                    auto_fix.isFilling = false
-                                end
-                            end
-                        end
-
-                        if not vehHealth[getCarHealth(storeCarCharIsInNoSave(PLAYER_PED))] then
-                            for id, _ in pairs(auto_fix.tehvehTexts) do
-                                local result, _, x, y, z, _, _, _, _ = sampGet3dTextInfoById(id)
-                                if result and getDistanceBetweenCoords3d(px, py, pz, x, y, z) < 5.0 then
-                                    if not isCarEngineOn(storeCarCharIsInNoSave(PLAYER_PED)) then
-                                        sampSendChat("/tehveh")
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-
+            imgui.Process = State.main_window.v
+            handleStroboscopes()
+            handleAutoFix()
             wait(0)
         end
     end)
 end
 
-------------- SHOW DIALOG ID -------------------
-function sampev.onShowDialog(id, style, title, button1, button2, text)
-    if CheckBoxDialogID.v then
-        sampAddChatMessage(id, main_color)
+function handleAutoFix()
+    if not State.auto_fix_state.v or not isCharInAnyCar(PLAYER_PED) then return end
+    local car = storeCarCharIsInNoSave(PLAYER_PED)
+    if getDriverOfCar(car) == PLAYER_PED then
+        if not AutoFix.lastCheckTime or os.clock() - AutoFix.lastCheckTime > 0.3 then
+            AutoFix.lastCheckTime = os.clock()
+
+            local px, py, pz = getCharCoordinates(PLAYER_PED)
+
+            if isFillRequired() then
+                for id, _ in pairs(AutoFix.fillTexts) do
+                    local result, _, x, y, z, _, _, _, _ = sampGet3dTextInfoById(id)
+                    if result and getDistanceBetweenCoords3d(px, py, pz, x, y, z) < 9.0 then
+                        sampSendChat("/fill")
+                        AutoFix.isFilling = true
+                    else
+                        AutoFix.isFilling = false
+                    end
+                end
+            end
+
+            if not CONFIG.VEHICLE_HEALTH_THRESHOLDS[getCarHealth(car)] then
+                for id, _ in pairs(AutoFix.tehvehTexts) do
+                    local result, _, x, y, z, _, _, _, _ = sampGet3dTextInfoById(id)
+                    if result and getDistanceBetweenCoords3d(px, py, pz, x, y, z) < 5.0 then
+                        if not isCarEngineOn(car) then
+                            sampSendChat("/tehveh")
+                        end
+                    end
+                end
+            end
+        end
     end
 end
 
---------------------------------------------------
+function handleStroboscopes()
+    if not State.straboscopes.v then return end
+    if wasKeyPressed(VK_P) and not sampIsChatInputActive() and not sampIsDialogActive() then
+        if isCharInAnyCar(PLAYER_PED) and
+            not isCharInAnyBoat(PLAYER_PED) and
+            not isCharInAnyHeli(PLAYER_PED) and
+            not isCharInAnyPlane(PLAYER_PED) and
+            not isCharOnAnyBike(PLAYER_PED) and
+            not isCharInAnyTrain(PLAYER_PED) then
+            local carHandle = storeCarCharIsInNoSave(PLAYER_PED)
+            if getDriverOfCar(carHandle) == PLAYER_PED then
+                local res, id = sampGetVehicleIdByCarHandle(carHandle)
+                if res then
+                    local structure = getCarPointer(carHandle)
+                    structure = structure + 1440
+                    if carsStoroscopes[id] ~= nil then
+                        carsStoroscopes[id]:terminate()
+                        carsStoroscopes[id] = nil
+                        callMethod(7086336, structure, 2, 0, 0, 0)
+                        callMethod(7086336, structure, 2, 0, 1, 0)
+                    else
+                        carsStoroscopes[id] = lua_thread.create_suspended(function()
+                            while true do
+                                callMethod(7086336, structure, 2, 0, 1, 0)
+                                callMethod(7086336, structure, 2, 0, 0, 1)
+                                wait(100)
+                                callMethod(7086336, structure, 2, 0, 0, 0)
+                                callMethod(7086336, structure, 2, 0, 1, 1)
+                                wait(100)
+                            end
+                        end)
+                        carsStoroscopes[id]:run()
+                    end
+                end
+            end
+        end
+    end
+end
 
-----------------TEXT COLOR RGB ----------------
+function sampev.onShowDialog(id, style, title, button1, button2, text)
+    if State.CheckBoxDialogID.v then
+        sampAddChatMessage(id, State.main_color)
+    end
+end
+
 function imgui.TextColoredRGB(text)
     local style = imgui.GetStyle()
     local colors = style.Colors
@@ -428,9 +408,6 @@ function imgui.TextColoredRGB(text)
     render_text(text)
 end
 
-------------------------------------------------
-
------------------ CENTER TEXT ------------------
 function imgui.CenterText(text)
     local width = imgui.GetWindowWidth()
     local calc = imgui.CalcTextSize(text)
@@ -438,8 +415,6 @@ function imgui.CenterText(text)
     imgui.Text(text)
 end
 
-------------------------------------------------
--------------- GET MY NICK ---------------------
 function getMyNick()
     local result, id = sampGetPlayerIdByCharHandle(playerPed)
     if result then
@@ -448,24 +423,17 @@ function getMyNick()
     end
 end
 
------------------------------------------------
----------- OPEN/CLOSE MAIN MENU ---------------
-function callback_1()
+function mainMenu()
     if sampIsChatInputActive() or sampIsDialogActive() then return end
-    main_window.v = not main_window.v
-    menu = 0
+    State.main_window.v = not State.main_window.v
+    State.menu = 0
 end
 
-------------------------------------------------
-------------------BattlePass--------------------
 function battlepass()
     if sampIsChatInputActive() or sampIsDialogActive() then return end
     sampSendChat("/battlepass")
 end
 
-------------------------------------------------
-
-----------------------SetWeather----------------------
 function cmdSetWeather(param)
     if param == nil or param == "" then
         sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Используйте: /sw [0-45]", 0xFFFFFF)
@@ -478,8 +446,6 @@ function cmdSetWeather(param)
     end
 end
 
-------------------------------------------------
-------------------HelpMarker--------------------
 function imgui.HelpMarker(text)
     imgui.TextDisabled('[?]')
     if imgui.IsItemHovered() then
@@ -491,28 +457,30 @@ function imgui.HelpMarker(text)
     end
 end
 
-------------------------------------------------
-
----------------------SS/CC----------------------
-
+-- IC chat only
 function sampev.onServerMessage(color, text)
-    if not text or not statusSsMode then return true end
-    if text:find('%[AD%]')
-        or text:find(' SMS ')        -- Фильтрация СМС
-        or text:find('%[ADM%]')      -- Фильтрация Админских сообщений
-        or text:find('%[PP%]')       -- Фильтрация наказаний
-        or text:find("^%*%*.+%*%*$") -- Фильтрация рации департамента/иные новости
-        or text:find("^%*%* .-:")    -- Фильтрация рации
-        or text:find('%(%(.-%)%)')   -- Фильтрация ООС сообщений
-        or text:find('____')         -- Фильтрация PayDay
-        or text:find('{0088ff}')
+    if not text or not State.statusSsMode then return true end
 
-    then
-        logFilteredMessage(color, text)
-        return false
-    else
-        return true
+    local filtered_patterns = {
+        '%[AD%]',       -- AD messages
+        ' SMS ',        -- SMS messages
+        '%[ADM%]',      -- Admin messages
+        '%[PP%]',       -- Punishment messages
+        "^%*%*.+%*%*$", -- Department radio/news
+        "^%*%* .-:",    -- Radio messages
+        '%(%(.-%)%)',   -- OOC messages
+        '____',         -- PayDay messages
+        '{0088ff}'      -- Specific color messages
+    }
+
+    for _, pattern in ipairs(filtered_patterns) do
+        if text:find(pattern) then
+            logFilteredMessage(color, text)
+            return false
+        end
     end
+
+    return true
 end
 
 function logFilteredMessage(color, text)
@@ -521,39 +489,36 @@ function logFilteredMessage(color, text)
     sampfuncsLog(logText)
 end
 
----------------------Black screen----------------------
-
+-- Black screen for screenshot situations
 function blackout()
-    blackout = not blackout
+    State.blackout = not State.blackout
 
-    if blackout then
-        if not blackout_textdraw_id then
+    if State.blackout then
+        if not State.blackout_textdraw_id then
             for i = 1, 10000 do
                 if not sampTextdrawIsExists(i) then
-                    blackout_textdraw_id = i
+                    State.blackout_textdraw_id = i
                     break
                 end
             end
         end
 
-        if blackout_textdraw_id then
-            sampTextdrawCreate(blackout_textdraw_id, "usebox", -7.0, -7.0)
-            sampTextdrawSetLetterSizeAndColor(blackout_textdraw_id, 0.475, 55.0, 0x00000000)
-            sampTextdrawSetBoxColorAndSize(blackout_textdraw_id, 1, 0xFF000000, 900.0, 900.0)
-            sampTextdrawSetShadow(blackout_textdraw_id, 0, 0xFF000000)
-            sampTextdrawSetOutlineColor(blackout_textdraw_id, 1, 0xFF000000)
-            sampTextdrawSetAlign(blackout_textdraw_id, 1)
-            sampTextdrawSetProportional(blackout_textdraw_id, 1)
+        if State.blackout_textdraw_id then
+            sampTextdrawCreate(State.blackout_textdraw_id, "usebox", -7.0, -7.0)
+            sampTextdrawSetLetterSizeAndColor(State.blackout_textdraw_id, 0.475, 55.0, 0x00000000)
+            sampTextdrawSetBoxColorAndSize(State.blackout_textdraw_id, 1, 0xFF000000, 900.0, 900.0)
+            sampTextdrawSetShadow(State.blackout_textdraw_id, 0, 0xFF000000)
+            sampTextdrawSetOutlineColor(State.blackout_textdraw_id, 1, 0xFF000000)
+            sampTextdrawSetAlign(State.blackout_textdraw_id, 1)
+            sampTextdrawSetProportional(State.blackout_textdraw_id, 1)
         end
     else
-        if blackout_textdraw_id then
-            sampTextdrawDelete(blackout_textdraw_id)
-            blackout_textdraw_id = nil
+        if State.blackout_textdraw_id then
+            sampTextdrawDelete(State.blackout_textdraw_id)
+            State.blackout_textdraw_id = nil
         end
     end
 end
-
-------------------------------------------------
 
 ---- Приветстиве -------
 local changelog10 = [[
@@ -578,7 +543,7 @@ local authors = [[
     — Amelia Brown (режим IC-only чата и его очистка).
 ]]
 
-function menu_0()
+function welcomeMenu()
     imgui.CenterText('' .. thisScript().name .. u8 ' | v' .. thisScript().version .. ' | Developers - Saburo Arasaka')
     imgui.CenterText(u8 'Разработан специально для Pears Project')
     imgui.Text(u8(authors))
@@ -590,17 +555,15 @@ function menu_0()
     imgui.Separator()
     imgui.CenterText(u8 'Контакты:')
     imgui.CenterText(u8 'Saburo Arasaka ' .. fa.ICON_TELEGRAM .. ' - @goatffs')
-    -- imgui.CenterText(u8 '' .. fa.ICON_VK .. ' - vladbagmut')
     imgui.CenterText(u8 'Dave Grand ' .. fa.ICON_TELEGRAM .. ' - @daveamp')
     imgui.CenterText(u8 'Amelia Brown ' .. fa.ICON_TELEGRAM .. ' - @wnenad')
 end
 
--------------------Auto Alert---------------------
-
+-- Auto Alert
 function sampev.onSendTakeDamage(playerId, _, _, _, _)
-    if not playerId or playerId > 1000 or not mainIni.state.auto_alert then return end
+    if not playerId or playerId > 1000 or not State.auto_alert_state.v then return end
     local now = os.time()
-    if not auto_alert.attackerCooldowns[playerId] or now - auto_alert.attackerCooldowns[playerId] >= auto_alert.ALERT_INTERVAL then
+    if not AutoAlert.attackerCooldowns[playerId] or now - AutoAlert.attackerCooldowns[playerId] >= CONFIG.ALERT_INTERVAL then
         local name = sampGetPlayerNickname(playerId)
         sampAddChatMessage(
             string.format(
@@ -611,18 +574,18 @@ function sampev.onSendTakeDamage(playerId, _, _, _, _)
             ),
             -1
         )
-        auto_alert.pendingAttacker = playerId
-        auto_alert.pendingExpireTime = now + auto_alert.ALERT_INTERVAL
-        auto_alert.attackerCooldowns[playerId] = now
+        AutoAlert.pendingAttacker = playerId
+        AutoAlert.pendingExpireTime = now + CONFIG.ALERT_INTERVAL
+        AutoAlert.attackerCooldowns[playerId] = now
     end
 end
 
 function backup()
     if sampIsChatInputActive() or sampIsDialogActive() then return end
     if mainIni.state.auto_alert then
-        if os.time() - auto_alert.lastGlobalBackupTime >= auto_alert.BACKUP_INTERVAL then
+        if os.time() - AutoAlert.lastGlobalBackupTime >= CONFIG.BACKUP_INTERVAL then
             callForBackup()
-            auto_alert.lastGlobalBackupTime = os.time()
+            AutoAlert.lastGlobalBackupTime = os.time()
         end
     end
 end
@@ -637,11 +600,11 @@ end
 function su()
     if sampIsChatInputActive() or sampIsDialogActive() then return end
     if mainIni.state.auto_alert then
-        if auto_alert.pendingAttacker and os.time() <= auto_alert.pendingExpireTime then
-            if not auto_alert.suCooldowns[auto_alert.pendingAttacker] or os.time() - auto_alert.suCooldowns[auto_alert.pendingAttacker] >= auto_alert.SU_INTERVAL then
-                issueWanted(auto_alert.pendingAttacker)
-                auto_alert.suCooldowns[auto_alert.pendingAttacker] = os.time()
-                pendingAttacker = nil
+        if AutoAlert.pendingAttacker and os.time() <= AutoAlert.pendingExpireTime then
+            if not AutoAlert.suCooldowns[AutoAlert.pendingAttacker] or os.time() - AutoAlert.suCooldowns[AutoAlert.pendingAttacker] >= AutoAlert.SU_INTERVAL then
+                issueWanted(AutoAlert.pendingAttacker)
+                AutoAlert.suCooldowns[AutoAlert.pendingAttacker] = os.time()
+                AutoAlert.pendingAttacker = nil
             end
         end
     end
@@ -659,23 +622,20 @@ function getZoneName()
     return calculateZone(x, y, z)
 end
 
---------------------------------------------------
-
--------------------Auto Find----------------------
-
+-- Auto Find
 function cmdFind(arg)
     local id = tonumber(arg)
     if not id then
-        sampAddChatMessage("[Tools] {ff0000}Неверный{ffffff} ID игрока.", main_color)
+        sampAddChatMessage("[Tools] {ff0000}Неверный{ffffff} ID игрока.", State.main_color)
         return
     end
 
-    auto_find.state = true
-    auto_find.targetId = id
-    auto_find.zoneDestroyed = false
-    auto_find.checkpointDisabled = false
+    AutoFind.state = true
+    AutoFind.targetId = id
+    AutoFind.zoneDestroyed = false
+    AutoFind.checkpointDisabled = false
 
-    if auto_find_state.v and auto_find.state then
+    if State.auto_find_state.v and AutoFind.state then
         printStringNow("~b~~h~~h~~h~Find: ~b~~h~~h~ enabled", 1600)
     end
 
@@ -683,88 +643,68 @@ function cmdFind(arg)
 end
 
 function cmdFindOff()
-    if not auto_find_state.v or not auto_find.state then return end
+    if not State.auto_find_state.v or not AutoFind.state then return end
 
-    auto_find.state = false
-    auto_find.targetId = nil
-    auto_find.zoneDestroyed = false
-    auto_find.checkpointDisabled = false
+    AutoFind.state = false
+    AutoFind.targetId = nil
+    AutoFind.zoneDestroyed = false
+    AutoFind.checkpointDisabled = false
 
     printStringNow("~b~~h~~h~~h~Find: ~b~~h~~h~ disabled", 1600)
 end
 
-function closeDialogAsync()
-    lua_thread.create(function()
-        wait(1)
-        sampCloseCurrentDialogWithButton(0)
-    end)
-end
-
 function trySendFind()
-    if auto_find_state.v and auto_find.state and auto_find.zoneDestroyed and auto_find.checkpointDisabled and auto_find.targetId then
+    if State.auto_find_state.v and AutoFind.state and
+        AutoFind.zoneDestroyed and AutoFind.checkpointDisabled and
+        AutoFind.targetId then
         synchronized("trySendFind", function()
-            local delay = auto_find_delay_by_level[mainIni.config.auto_find_level_selected] or 0
+            local delay = CONFIG.AUTO_FIND_DELAYS[mainIni.config.auto_find_level_selected] or 0
             if delay > 0 then wait(delay * 1000) end
 
-            sampSendChat("/find " .. auto_find.targetId)
-            auto_find.zoneDestroyed = false
-            auto_find.checkpointDisabled = false
+            sampSendChat("/find " .. AutoFind.targetId)
+            AutoFind.zoneDestroyed = false
+            AutoFind.checkpointDisabled = false
         end)
     end
 end
 
 function sendFind()
-    sampSendChat("/find " .. auto_find.targetId)
-    auto_find.zoneDestroyed = false
-    auto_find.checkpointDisabled = false
+    sampSendChat("/find " .. AutoFind.targetId)
+    AutoFind.zoneDestroyed = false
+    AutoFind.checkpointDisabled = false
 end
 
 function sampev.onGangZoneDestroy(zoneId)
-    if auto_find_state.v and auto_find.state and zoneId == 0 then
-        auto_find.zoneDestroyed = true
+    if State.auto_find_state.v and AutoFind.state and zoneId == 0 then
+        AutoFind.zoneDestroyed = true
         trySendFind()
     end
 end
 
 function sampev.onDisableCheckpoint()
-    if auto_find_state.v and auto_find.state then
-        auto_find.checkpointDisabled = true
+    if State.auto_find_state.v and AutoFind.state then
+        AutoFind.checkpointDisabled = true
         trySendFind()
     end
 end
 
-function sampev.onShowDialog(dialogId, style, title, button1, button2, text)
-    if not auto_find_state.v or not auto_find.state or not text then return end
-
-    if text:find("Этот игрок не в сети, или ещё не залогинился") then
-        sampAddChatMessage("[Tools] {ffffff}Игрок {ff0000}оффлайн{ffffff}.", main_color)
-        cmdFindOff()
-        closeDialogAsync()
-    elseif text:find("У вас активна зона поиска, дождитесь её окончания") then
-        closeDialogAsync()
-    end
-end
-
 function sampev.onPlayerQuit(playerId, reason)
-    if auto_find_state.v and auto_find.state and playerId == auto_find.targetId then
+    if State.auto_find_state.v and AutoFind.state and playerId == AutoFind.targetId then
         local nickname = sampGetPlayerNickname(playerId) or "Unknown"
         sampAddChatMessage(
             string.format(
                 '[Tools] {ffffff}Игрок {FF9C00}%s[%d] {FFFFFF}вышел с сервера. {FF9C00}Причина: {FFFFFF}%s.',
-                nickname, playerId, quit_reasons[reason] or 'неизвестно'
+                nickname, playerId, CONFIG.BACKUP_INTERVAL[reason] or 'неизвестно'
             ),
-            main_color
+            State.main_color
         )
         cmdFindOff()
     end
 end
 
---------------------------------------------------
-
---------------------Auto Fix----------------------
-
+-- Auto Fix
 function isFillRequired()
-    if not auto_fix_state.v then return end
+    if not State.auto_fix_state.v then return end
     if not sampTextdrawIsExists(2133) then return end
     local fuel = tonumber(sampTextdrawGetString(2133):match("(%d+)[,.]?%d*"))
     return fuel and fuel < 95
@@ -773,244 +713,306 @@ end
 function sampev.onCreate3DText(id, _, _, _, _, _, _, text)
     local lowerText = text:lower()
     if lowerText:find("/fill ") then
-        auto_fix.fillTexts[id] = true
+        AutoFix.fillTexts[id] = true
     elseif lowerText:find("/tehveh") then
-        auto_fix.tehvehTexts[id] = true
+        AutoFix.tehvehTexts[id] = true
     end
 end
 
 function sampev.onRemove3DTextLabel(id)
-    auto_fix.fillTexts[id] = nil
-    auto_fix.tehvehTexts[id] = nil
+    AutoFix.fillTexts[id] = nil
+    AutoFix.tehvehTexts[id] = nil
 end
 
---------------------------------------------------
-
----- Приветстиве -------
-
 function imgui.OnDrawFrame()
+    setColorScheme()
+    if State.main_window.v then      renderMainWindow() end
+end
+
+function setColorScheme()
     if elements.int.intImGui.v == 0 then
         gray()
         mainIni.config.intImGui = elements.int.intImGui.v
-        main_color = 0x262e38
+        State.main_color = 0x262e38
         save()
     elseif elements.int.intImGui.v == 1 then
         blackred()
         mainIni.config.intImGui = elements.int.intImGui.v
-        main_color = 0xFF0000
+        State.main_color = 0xFF0000
         save()
     elseif elements.int.intImGui.v == 2 then
         purple()
         mainIni.config.intImGui = elements.int.intImGui.v
-        main_color = 0x6830a1
+        State.main_color = 0x6830a1
         save()
     elseif elements.int.intImGui.v == 3 then
         blue()
         mainIni.config.intImGui = elements.int.intImGui.v
-        main_color = 0x3d3d3d
+        State.main_color = 0x3d3d3d
         save()
     elseif elements.int.intImGui.v == 4 then
         blackwhite()
         mainIni.config.intImGui = elements.int.intImGui.v
-        main_color = 0x072b8c
+        State.main_color = 0x072b8c
         save()
     elseif elements.int.intImGui.v == 5 then
         orange()
         mainIni.config.intImGui = elements.int.intImGui.v
-        main_color = 0xFFA500
+        State.main_color = 0xFFA500
         save()
     elseif elements.int.intImGui.v == 6 then
         pink()
         mainIni.config.intImGui = elements.int.intImGui.v
-        main_color = 0xAC0046
+        State.main_color = 0xAC0046
         save()
     end
-    result, myid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+end
 
-    if main_window.v then
-        imgui.SetNextWindowPos(imgui.ImVec2(imgui.GetIO().DisplaySize.x / 2, imgui.GetIO().DisplaySize.y / 2),
-            imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
-        imgui.SetNextWindowSize(imgui.ImVec2(745, 450), imgui.Cond.FirstUseEver)
-        imgui.Begin('' .. thisScript().name .. ' | v.' .. thisScript().version .. '', main_window,
-            imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse)
+function renderMainWindow()
+    imgui.SetNextWindowPos(imgui.ImVec2(imgui.GetIO().DisplaySize.x / 2, imgui.GetIO().DisplaySize.y / 2),
+        imgui.Cond.FirstUseEver, imgui.ImVec2(0.5, 0.5))
+    imgui.SetNextWindowSize(imgui.ImVec2(745, 450), imgui.Cond.FirstUseEver)
+    imgui.Begin('' .. thisScript().name .. ' | v.' .. thisScript().version .. '', State.main_window,
+        imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse)
 
-        imgui.BeginChild("##left", imgui.ImVec2(180, 400), true)
-        if imgui.Button(u8 'Основное', imgui.ImVec2(155, 30)) then menu = 1 end
-        if imgui.Button(u8 'Auto Alert', imgui.ImVec2(155, 30)) then menu = 2 end
-        if imgui.Button(u8 'Auto Find', imgui.ImVec2(155, 30)) then menu = 3 end
-        if imgui.Button(u8 'Auto Fix (experimental)', imgui.ImVec2(155, 30)) then menu = 4 end
-        if imgui.Button(u8 'SS Tools', imgui.ImVec2(155, 30)) then menu = 5 end
-        if imgui.Button(u8 'Спец.Клавиши', imgui.ImVec2(155, 30)) then menu = 9 end
-        if imgui.Button(u8 'Настройки', imgui.ImVec2(155, 30)) then menu = 10 end
-        imgui.EndChild()
-        imgui.SameLine()
-        imgui.BeginChild("##right", imgui.ImVec2(520, 400), true)
-        if menu == 0 then
-            menu_0()
-        end
-        if menu == 1 then
-            imgui.CenterText(u8 'Добро пожаловать, ' .. getMyNick())
-            imgui.Separator()
-            if imadd.ToggleButton("##straboscopes", straboscopes) then
-                if straboscopes.v then
-                    sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {01DF01}включены{ffffff}.", main_color)
-                    mainIni.state.stroboscopes = true
-                    inicfg.save(mainIni, 'Tools.ini')
-                else
-                    sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {ff0000}отключены{ffffff}.", main_color)
-                    mainIni.state.stroboscopes = false
-                    inicfg.save(mainIni, 'Tools.ini')
-                end
-            end
-            imgui.SameLine()
-            imgui.Text(u8 "Стробоскопы")
-            imgui.SameLine()
-            imgui.HelpMarker(u8 "Активация сирены /strobes | Активация стробоскопов P")
+    renderLeftPanel()
+    imgui.SameLine()
+    renderRightPanel()
 
-            if imgui.Button(u8 'Перезагрузить скрипт', ImVec2(490, 0)) then
-                sampAddChatMessage('[Tools] {FFFFFF}Перезагрузка...', main_color)
-                showCursor(false)
-                thisScript():reload()
-            end
-            if imgui.Button(u8 'Выключить скрипт', ImVec2(490, 0)) then
-                sampAddChatMessage('[Tools] {FFFFFF}Выключаем скрипт...', main_color)
-                showCursor(false)
-                thisScript():unload()
-            end
-        end
-        if menu == 2 then
-            if imadd.ToggleButton("##auto_alert_state", auto_alert_state) then
-                if auto_alert_state.v then
-                    sampAddChatMessage("[Tools] {FFFFFF}Запрос о поддержке {01DF01}включён{ffffff}.", main_color)
-                    mainIni.state.auto_alert = true
-                    inicfg.save(mainIni, 'Tools.ini')
-                else
-                    sampAddChatMessage("[Tools] {FFFFFF}Запрос о поддержке {ff0000}отключён{ffffff}.", main_color)
-                    mainIni.state.auto_alert = false
-                    inicfg.save(mainIni, 'Tools.ini')
-                end
-            end
-            imgui.SameLine()
-            imgui.Text(u8 "Запрос о поддержке")
-            -- backup button
-            if imgui.HotKey("##HotKeys.backup", HotKeys.backup) then
-                rkeys.changeHotKey(ID_BACKUP, HotKeys.backup.v)
-                mainIni.hotkeys.backup = encodeJson(HotKeys.backup.v)
-                inicfg.save(mainIni, 'Tools.ini')
-                sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", main_color)
-            end
-            imgui.SameLine()
-            imgui.Text(u8 'Изменить кнопку запроса поддержки')
-            -- su button
-            if imgui.HotKey("##HotKeys.su", HotKeys.su) then
-                rkeys.changeHotKey(ID_SU, HotKeys.su.v)
-                mainIni.hotkeys.su = encodeJson(HotKeys.su.v)
-                inicfg.save(mainIni, 'Tools.ini')
-                sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", main_color)
-            end
-            imgui.SameLine()
-            imgui.Text(u8 'Изменить кнопку выдачи розыска')
-            -- backup text
-            imgui.Text(u8 'Изменить текст вызова поддержки')
-            imgui.SameLine()
-            imgui.HelpMarker(u8 "Используйте #zone для указания района. Например: Требуется подкрепление. Район #zone.")
-
-            auto_alert_backup_text_buffer.v = mainIni.config.backup_text:gsub("%%s", "#zone")
-            if imgui.InputText(u8 '', auto_alert_backup_text_buffer) then -- условие будет срабатывать при изменении текста
-                local backup_text = auto_alert_backup_text_buffer.v:gsub("#zone", "%%s")
-                mainIni.config.backup_text = backup_text
-                inicfg.save(mainIni, 'Tools.ini')
-            end
-        end
-        if menu == 3 then
-            if imadd.ToggleButton("##auto_find_state", auto_find_state) then
-                if auto_find_state.v then
-                    sampAddChatMessage("[Tools] {FFFFFF}Автопоиск {01DF01}включён{ffffff}.", main_color)
-                    mainIni.state.auto_find = true
-                    inicfg.save(mainIni, 'Tools.ini')
-                else
-                    sampAddChatMessage("[Tools] {FFFFFF}Автопоиск {ff0000}отключён{ffffff}.", main_color)
-                    mainIni.state.auto_find = false
-                    inicfg.save(mainIni, 'Tools.ini')
-                end
-            end
-            imgui.SameLine()
-            imgui.Text(u8 "Автопоиск")
-            imgui.Text(u8 'Активация: /find [id]')
-            imgui.Text(u8 'Деактивация: /findoff')
-            -- Нужна инфа!!!
-            -- imgui.Separator()
-            -- imgui.Text(u8 'Уровень Сыщика')
-            -- imgui.SameLine()
-            -- imgui.HelpMarker(u8 "/skill - Навык Сыщика")
-            -- for i = 10, 1, -1 do
-            --     if imgui.RadioButton(tostring(i), mainIni.config.auto_find_level_selected == i) then
-            --         mainIni.config.auto_find_level_selected = i
-            --         inicfg.save(mainIni, 'Tools.ini')
-            --     end
-            --     imgui.SameLine()
-            -- end
-        end
-        if menu == 4 then
-            if imadd.ToggleButton("##auto_fix_state", auto_fix_state) then
-                if auto_fix_state.v then
-                    sampAddChatMessage("[Tools] {FFFFFF}Автопочинка {01DF01}включена{ffffff}.", main_color)
-                    mainIni.state.auto_fix = true
-                    inicfg.save(mainIni, 'Tools.ini')
-                else
-                    sampAddChatMessage("[Tools] {FFFFFF}Автопочинка {ff0000}отключена{ffffff}.", main_color)
-                    mainIni.state.auto_fix = false
-                    inicfg.save(mainIni, 'Tools.ini')
-                end
-            end
-            imgui.SameLine()
-            imgui.Text(u8 "Автопочинка и автозаправка")
-            imgui.SameLine()
-            imgui.HelpMarker(u8 "Автопочинка и автозаправка в гос.гаражах. Для починки нужно заглушить двигатель.")
-        end
-        if menu == 5 then
-            imgui.Text(u8 "/ss - только IC чат (удаление ad, админских строк, PayDay, /r, /d, OOC чатов).")
-            imgui.Text(u8 "/сс - очистить чат.")
-            imgui.Text(u8 "/blackout - чёрный экран.")
-        end
-        if menu == 9 then
-            -- callback 1
-            if imgui.HotKey("##HotKeys.callback_1", HotKeys.callback_1) then
-                rkeys.changeHotKey(ID_CALLBACK_1, HotKeys.callback_1.v)
-                mainIni.hotkeys.callback_1 = encodeJson(HotKeys.callback_1.v)
-                inicfg.save(mainIni, 'Tools.ini')
-                sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", main_color)
-            end
-            imgui.SameLine()
-            imgui.Text(u8 'Изменить кнопку активацию меню')
-            -- battlepass
-            if imgui.HotKey("##HotKeys.battlepass", HotKeys.battlepass) then
-                rkeys.changeHotKey(ID_BATTLEPASS, HotKeys.battlepass.v)
-                mainIni.hotkeys.battlepass = encodeJson(HotKeys.battlepass.v)
-                inicfg.save(mainIni, 'Tools.ini')
-                sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", main_color)
-            end
-            imgui.SameLine()
-            imgui.Text(u8 'Изменить кнопку активацию battlepass')
-        end
-        if menu == 10 then
-            local styles = { u8 "Серая", u8 "Красная", u8 "Фиолетовая", u8 "Чёрная", u8 "Синяя", u8 "Оранжевая", u8 "Розовая" }
-            imgui.Combo(u8 'Стиль интерфейса', elements.int.intImGui, styles)
-            -- imgui.Separator()
-            -- if imadd.ToggleButton("##idDialog", CheckBoxDialogID) then
-            --     if CheckBoxDialogID.v then
-            --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {01DF01}включён{ffffff}.", main_color)
-            --     else
-            --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {ff0000}отключён{ffffff}.", main_color)
-            --     end
-            -- end
-            -- imgui.SameLine()
-            -- imgui.TextColoredRGB('[Выкл/Вкл]  {FF0000}Dialog ID')
-            -- imgui.SameLine()
-        end
-        imgui.EndChild()
-    end
     imgui.End()
+end
+
+function renderLeftPanel()
+    imgui.BeginChild("##left", imgui.ImVec2(180, 400), true)
+
+    local menuButtons = {
+        { text = u8 'Основное', menu = 1 },
+        { text = u8 'Auto Alert', menu = 2 },
+        { text = u8 'Auto Find', menu = 3 },
+        { text = u8 'Auto Fix (experimental)', menu = 4 },
+        { text = u8 'SS Tools', menu = 5 },
+        { text = u8 'Спец.Клавиши', menu = 9 },
+        { text = u8 'Настройки', menu = 10 }
+    }
+
+    for _, button in ipairs(menuButtons) do
+        if imgui.Button(button.text, imgui.ImVec2(155, 30)) then
+            State.menu = button.menu
+        end
+    end
+
+    imgui.EndChild()
+end
+
+function renderRightPanel()
+    imgui.BeginChild("##right", imgui.ImVec2(520, 400), true)
+
+    local menuRenderers = {
+        [0] = welcomeMenu,
+        [1] = menu_1,
+        [2] = menu_2,
+        [3] = menu_3,
+        [4] = menu_4,
+        [5] = menu_5,
+        [9] = menu_9,
+        [10] = menu_10
+    }
+
+    local renderer = menuRenderers[State.menu]
+    if renderer then
+        renderer()
+    end
+
+    imgui.EndChild()
+end
+
+function menu_1()
+    imgui.CenterText(u8 'Добро пожаловать, ' .. getMyNick())
+    imgui.Separator()
+    if imadd.ToggleButton("##straboscopes", State.straboscopes) then
+        if State.straboscopes.v then
+            sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {01DF01}включены{ffffff}.", State.main_color)
+            mainIni.state.stroboscopes = true
+            inicfg.save(mainIni, 'Tools.ini')
+        else
+            sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {ff0000}отключены{ffffff}.", State.main_color)
+            mainIni.state.stroboscopes = false
+            inicfg.save(mainIni, 'Tools.ini')
+        end
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Стробоскопы")
+    imgui.SameLine()
+    imgui.HelpMarker(u8 "Активация сирены /strobes | Активация стробоскопов P")
+
+    if imgui.Button(u8 'Перезагрузить скрипт', ImVec2(490, 0)) then
+        sampAddChatMessage('[Tools] {FFFFFF}Перезагрузка...', State.main_color)
+        showCursor(false)
+        thisScript():reload()
+    end
+    if imgui.Button(u8 'Выключить скрипт', ImVec2(490, 0)) then
+        sampAddChatMessage('[Tools] {FFFFFF}Выключаем скрипт...', State.main_color)
+        showCursor(false)
+        thisScript():unload()
+    end
+end
+
+function menu_2()
+    if imadd.ToggleButton("##auto_alert_state", State.auto_alert_state) then
+        if State.auto_alert_state.v then
+            sampAddChatMessage("[Tools] {FFFFFF}Запрос о поддержке {01DF01}включён{ffffff}.", State.main_color)
+            mainIni.state.auto_alert = true
+            inicfg.save(mainIni, 'Tools.ini')
+        else
+            sampAddChatMessage("[Tools] {FFFFFF}Запрос о поддержке {ff0000}отключён{ffffff}.", State.main_color)
+            mainIni.state.auto_alert = false
+            inicfg.save(mainIni, 'Tools.ini')
+        end
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Запрос о поддержке")
+    -- backup button
+    if imgui.HotKey("##HotKeys.backup", HotKeys.backup) then
+        rkeys.changeHotKey(ID_BACKUP, HotKeys.backup.v)
+        mainIni.hotkeys.backup = encodeJson(HotKeys.backup.v)
+        inicfg.save(mainIni, 'Tools.ini')
+        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+    end
+    imgui.SameLine()
+    imgui.Text(u8 'Изменить кнопку запроса поддержки')
+    -- su button
+    if imgui.HotKey("##HotKeys.su", HotKeys.su) then
+        rkeys.changeHotKey(ID_SU, HotKeys.su.v)
+        mainIni.hotkeys.su = encodeJson(HotKeys.su.v)
+        inicfg.save(mainIni, 'Tools.ini')
+        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+    end
+    imgui.SameLine()
+    imgui.Text(u8 'Изменить кнопку выдачи розыска')
+    -- backup text
+    imgui.Text(u8 'Изменить текст вызова поддержки')
+    imgui.SameLine()
+    imgui.HelpMarker(u8 "Используйте #zone для указания района. Например: Требуется подкрепление. Район #zone.")
+
+    State.auto_alert_backup_text_buffer.v = mainIni.config.backup_text:gsub("%%s", "#zone")
+    if imgui.InputText(u8 '', State.auto_alert_backup_text_buffer) then         -- условие будет срабатывать при изменении текста
+        local backup_text = State.auto_alert_backup_text_buffer.v:gsub("#zone", "%%s")
+        mainIni.config.backup_text = backup_text
+        inicfg.save(mainIni, 'Tools.ini')
+    end
+end
+
+function menu_3()
+    if imadd.ToggleButton("##auto_find_state", State.auto_find_state) then
+        if State.auto_find_state.v then
+            sampAddChatMessage("[Tools] {FFFFFF}Автопоиск {01DF01}включён{ffffff}.", State.main_color)
+            mainIni.state.auto_find = true
+            inicfg.save(mainIni, 'Tools.ini')
+        else
+            sampAddChatMessage("[Tools] {FFFFFF}Автопоиск {ff0000}отключён{ffffff}.", State.main_color)
+            mainIni.state.auto_find = false
+            inicfg.save(mainIni, 'Tools.ini')
+        end
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Автопоиск")
+    imgui.Text(u8 'Активация: /find [id]')
+    imgui.Text(u8 'Деактивация: /findoff')
+    -- Нужна инфа!!!
+    -- imgui.Separator()
+    -- imgui.Text(u8 'Уровень Сыщика')
+    -- imgui.SameLine()
+    -- imgui.HelpMarker(u8 "/skill - Навык Сыщика")
+    -- for i = 10, 1, -1 do
+    --     if imgui.RadioButton(tostring(i), mainIni.config.auto_find_level_selected == i) then
+    --         mainIni.config.auto_find_level_selected = i
+    --         inicfg.save(mainIni, 'Tools.ini')
+    --     end
+    --     imgui.SameLine()
+    -- end
+end
+
+function menu_4()
+    if imadd.ToggleButton("##auto_fix_state", State.auto_fix_state) then
+        if State.auto_fix_state.v then
+            sampAddChatMessage("[Tools] {FFFFFF}Автопочинка {01DF01}включена{ffffff}.", State.main_color)
+            mainIni.state.auto_fix = true
+            inicfg.save(mainIni, 'Tools.ini')
+        else
+            sampAddChatMessage("[Tools] {FFFFFF}Автопочинка {ff0000}отключена{ffffff}.", State.main_color)
+            mainIni.state.auto_fix = false
+            inicfg.save(mainIni, 'Tools.ini')
+        end
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Автопочинка и автозаправка")
+    imgui.SameLine()
+    imgui.HelpMarker(u8 "Автопочинка и автозаправка в гос.гаражах. Для починки нужно заглушить двигатель.")
+end
+
+function menu_5()
+    imgui.Text(u8 "/ss - только IC чат (удаление ad, админских строк, PayDay, /r, /d, OOC чатов).")
+    imgui.Text(u8 "/сс - очистить чат.")
+    imgui.Text(u8 "/blackout - чёрный экран.")
+end
+
+function menu_9()
+    -- callback 1
+    if imgui.HotKey("##HotKeys.main_menu", HotKeys.main_menu) then
+        rkeys.changeHotKey(ID_MAIN_MENU, HotKeys.main_menu.v)
+        mainIni.hotkeys.main_menu = encodeJson(HotKeys.main_menu.v)
+        inicfg.save(mainIni, 'Tools.ini')
+        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+    end
+    imgui.SameLine()
+    imgui.Text(u8 'Изменить кнопку активацию меню')
+    -- battlepass
+    if imgui.HotKey("##HotKeys.battlepass", HotKeys.battlepass) then
+        rkeys.changeHotKey(ID_BATTLEPASS, HotKeys.battlepass.v)
+        mainIni.hotkeys.battlepass = encodeJson(HotKeys.battlepass.v)
+        inicfg.save(mainIni, 'Tools.ini')
+        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+    end
+    imgui.SameLine()
+    imgui.Text(u8 'Изменить кнопку активацию battlepass')
+end
+
+function menu_10()
+    local styles = { u8 "Серая", u8 "Красная", u8 "Фиолетовая", u8 "Чёрная", u8 "Синяя", u8 "Оранжевая", u8 "Розовая" }
+    imgui.Combo(u8 'Стиль интерфейса', elements.int.intImGui, styles)
+    -- imgui.Separator()
+    -- if imadd.ToggleButton("##idDialog", CheckBoxDialogID) then
+    --     if CheckBoxDialogID.v then
+    --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {01DF01}включён{ffffff}.", main_color)
+    --     else
+    --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {ff0000}отключён{ffffff}.", main_color)
+    --     end
+    -- end
+    -- imgui.SameLine()
+    -- imgui.TextColoredRGB('[Выкл/Вкл]  {FF0000}Dialog ID')
+    -- imgui.SameLine()
+end
+
+function renderLeftPanel()
+    imgui.BeginChild("##left", imgui.ImVec2(180, 400), true)
+
+    local menuButtons = {
+        { text = u8 'Основное', menu = 1 },
+        { text = u8 'Auto Alert', menu = 2 },
+        { text = u8 'Auto Find', menu = 3 },
+        { text = u8 'Auto Fix (experimental)', menu = 4 },
+        { text = u8 'SS Tools', menu = 5 },
+        { text = u8 'Спец.Клавиши', menu = 9 },
+        { text = u8 'Настройки', menu = 10 }
+    }
+
+    for _, button in ipairs(menuButtons) do
+        if imgui.Button(button.text, imgui.ImVec2(155, 30)) then
+            State.menu = button.menu
+        end
+    end
+
+    imgui.EndChild()
 end
 
 function brown()
