@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.8')
+script_version('1.0.9')
 
 local CONFIG = {
     AUTO_UPDATE = true,
@@ -17,7 +17,7 @@ local CONFIG = {
         [1] = 80,
         [2] = 70,
         [3] = 60,
-        [4] = 50,
+        [4] = 47, -- verified
         [5] = 40,
         [6] = 30,
         [7] = 20,
@@ -29,7 +29,9 @@ local CONFIG = {
         [0] = 'потеря связи/краш',
         [1] = 'вышел из игры',
         [2] = 'кикнул сервер/забанили'
-    }
+    },
+    WALKIE_TALKIE_MAX_LENGTH = 60,
+    WALKIE_TALKIE_SEND_DELAY = 1500
 }
 
 local enable_autoupdate = CONFIG.AUTO_UPDATE
@@ -520,6 +522,55 @@ function blackout()
     end
 end
 
+-- newLine for /r and /d
+function sampev.onSendCommand(text)
+    local lowerText = text:lower()
+
+    if lowerText:find("^/r%s") or lowerText:find("^/d%s") then
+        local cmd, msg = text:match("^(%/%a+)%s(.+)")
+        if cmd and msg and #msg > CONFIG.WALKIE_TALKIE_MAX_LENGTH then
+            local parts = splitMessageSmart(msg, CONFIG.WALKIE_TALKIE_MAX_LENGTH)
+
+            lua_thread.create(function()
+                for _, part in ipairs(parts) do
+                    sampSendChat(cmd .. " " .. part)
+                    wait(CONFIG.WALKIE_TALKIE_SEND_DELAY)
+                end
+            end)
+
+            return false
+        end
+    end
+end
+
+function splitMessageSmart(message, limit)
+    local words = {}
+    for word in message:gmatch("%S+") do
+        table.insert(words, word)
+    end
+
+    local parts = {}
+    local current = ""
+
+    for i, word in ipairs(words) do
+        local test = (#current > 0) and (current .. " " .. word) or word
+        local suffix = (i < #words) and ".." or ""
+
+        if #test + #suffix <= limit then
+            current = test
+        else
+            table.insert(parts, current .. (i <= #words and ".." or ""))
+            current = ".." .. word
+        end
+    end
+
+    if #current > 0 then
+        table.insert(parts, current)
+    end
+
+    return parts
+end
+
 ---- Приветстиве -------
 local changelog10 = [[
 1. Смена стиля для меню.
@@ -533,7 +584,8 @@ local changelog10 = [[
 9. Добавлена авто починка и заправка в гос. гаражах.
 10. Добавлен вызов подкрепления и предложение о выдачи звёзд при стрельбе.
 11. Добавлено автообновление скрипта.
-12. Добавлен чёрный экран для ссок.
+12. Добавлен чёрный экран для ссок. /blackout
+13. Добавлен авто перенос в /d и /r.
 ]]
 
 local authors = [[
@@ -981,11 +1033,11 @@ function menu_10()
     local styles = { u8 "Серая", u8 "Красная", u8 "Фиолетовая", u8 "Чёрная", u8 "Синяя", u8 "Оранжевая", u8 "Розовая" }
     imgui.Combo(u8 'Стиль интерфейса', elements.int.intImGui, styles)
     -- imgui.Separator()
-    -- if imadd.ToggleButton("##idDialog", CheckBoxDialogID) then
-    --     if CheckBoxDialogID.v then
-    --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {01DF01}включён{ffffff}.", main_color)
+    -- if imadd.ToggleButton("##idDialog", State.CheckBoxDialogID) then
+    --     if State.CheckBoxDialogID.v then
+    --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {01DF01}включён{ffffff}.", State.main_color)
     --     else
-    --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {ff0000}отключён{ffffff}.", main_color)
+    --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {ff0000}отключён{ffffff}.", State.main_color)
     --     end
     -- end
     -- imgui.SameLine()
