@@ -30,8 +30,8 @@ local CONFIG = {
         [1] = 'вышел из игры',
         [2] = 'кикнул сервер/забанили'
     },
-    DEP_MAX_LENGTH = 60,
-    DEP_SEND_DELAY = 1500
+    WALKIE_TALKIE_MAX_LENGTH = 60,
+    WALKIE_TALKIE_SEND_DELAY = 1500
 }
 
 local enable_autoupdate = CONFIG.AUTO_UPDATE
@@ -528,13 +528,13 @@ function sampev.onSendCommand(text)
 
     if lowerText:find("^/r%s") or lowerText:find("^/d%s") then
         local cmd, msg = text:match("^(%/%a+)%s(.+)")
-        if cmd and msg and #msg > CONFIG.DEP_MAX_LENGTH then
-            local parts = splitMessageSmart(msg, CONFIG.DEP_MAX_LENGTH)
+        if cmd and msg and #msg > CONFIG.WALKIE_TALKIE_MAX_LENGTH then
+            local parts = splitMessageSmart(msg, CONFIG.WALKIE_TALKIE_MAX_LENGTH)
 
             lua_thread.create(function()
                 for _, part in ipairs(parts) do
                     sampSendChat(cmd .. " " .. part)
-                    wait(CONFIG.DEP_SEND_DELAY)
+                    wait(CONFIG.WALKIE_TALKIE_SEND_DELAY)
                 end
             end)
 
