@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.9')
+script_version('1.0.10')
 
 local CONFIG = {
     AUTO_UPDATE = true,
@@ -746,7 +746,7 @@ function sampev.onPlayerQuit(playerId, reason)
         sampAddChatMessage(
             string.format(
                 '[Tools] {ffffff}Игрок {FF9C00}%s[%d] {FFFFFF}вышел с сервера. {FF9C00}Причина: {FFFFFF}%s.',
-                nickname, playerId, CONFIG.BACKUP_INTERVAL[reason] or 'неизвестно'
+                nickname, playerId, CONFIG.QUIT_REASONS[reason] or 'неизвестно'
             ),
             State.main_color
         )
