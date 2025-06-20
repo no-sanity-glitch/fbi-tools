@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.10')
+script_version('1.0.11')
 
 local CONFIG = {
     AUTO_UPDATE = true,
