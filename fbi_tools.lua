@@ -1464,7 +1464,7 @@ function renderRightPanel()
         [3] = menu_3,
         [4] = menu_4,
         [5] = menu_5,
-        [5] = menu_6,
+        [6] = menu_6,
         [7] = menu_7,
         [9] = menu_9,
         [10] = menu_10
@@ -1592,6 +1592,7 @@ end
 
 function menu_5()
     imgui.Text(u8 "Визуальная смена скина")
+    imgui.Separator()
     imgui.Text(u8 'Поиск:')
     imgui.InputText(u8 '', State.skinSearch)
     if imgui.Selectable(u8 'Выкл', SkinChanger.selectedSkin == 0) then
