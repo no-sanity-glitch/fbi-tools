@@ -46,7 +46,7 @@ if enable_autoupdate then
             Update.json_url =
                 "https://raw.githubusercontent.com/no-sanity-glitch/fbi-tools/refs/heads/main/version.json?" ..
                 tostring(os.clock())
-            Update.prefix = "[" .. string.upper(thisScript().name) .. "]: "
+            Update.prefix = "[" .. thisScript().name .. "]: "
             Update.url = "https://github.com/no-sanity-glitch/fbi-tools/"
         end
     end
@@ -959,6 +959,7 @@ local changelog10 = [[
 12. Добавлен чёрный экран для ссок. /blackout
 13. Добавлен авто перенос в /d и /r.
 14. Добавлены базовые отыгровки /cuff, /fme, /frisk, /incar, /eject, /arest.
+15. Добавлен скин ченджер.
 ]]
 
 local authors = [[
@@ -1188,9 +1189,9 @@ function loadPearsLauncherSkins() -- from vAcs
                 end
             end
         end
-        print('[Tools] Загружено ' .. l_s_count .. ' скинов!')
+        print('Загружено ' .. l_s_count .. ' скинов!')
     else
-        print('[Tools] Не удалось загрузить скины из лаунчера.', 2, true, false)
+        print('Не удалось загрузить скины из лаунчера.', 2, true, false)
     end
 end
 
