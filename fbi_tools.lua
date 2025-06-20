@@ -642,6 +642,7 @@ function initializeMainThread()
         while true do
             imgui.Process = State.main_window.v
             handleStroboscopes()
+            handleSkinChanger()
             handleAutoFix()
             wait(0)
         end
@@ -986,8 +987,8 @@ function welcomeMenu()
 end
 
 -- Auto Alert
-function sampev.onSendTakeDamage(playerId, _, _, _, _)
-    if not playerId or playerId > 1000 or not State.auto_alert_state.v then return end
+function sampev.onSendTakeDamage(playerId, _, weapon, _, _)
+    if not playerId or playerId > 1000 or not State.auto_alert_state.v or weapon < 0 or weapon > 38 then return end
     local now = os.time()
     if not AutoAlert.attackerCooldowns[playerId] or now - AutoAlert.attackerCooldowns[playerId] >= CONFIG.ALERT_INTERVAL then
         local name = sampGetPlayerNickname(playerId)
