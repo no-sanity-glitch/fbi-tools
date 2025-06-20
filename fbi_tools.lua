@@ -71,8 +71,7 @@ u8 = encoding.UTF8
 local mainIni = inicfg.load({
     config = {
         intImGui = 0,
-        backup_text = "Требуется подкрепление. Район %s.",
-        auto_find_level_selected = 10,
+        auto_find_level_selected = 10
     },
     admin = {
         nameTitle = false,
@@ -88,15 +87,47 @@ local mainIni = inicfg.load({
         auto_find = false,
         auto_fix = false,
         stroboscopes = false,
+        binder = false,
+        bind_cuff = false,
+        bind_fme = false,
+        bind_frisk = false,
+        bind_incar = false,
+        bind_eject = false,
+        bind_arest = false,
     }
 }, 'Tools')
+
+local json = getWorkingDirectory() .. '\\config\\fbi_tools_binds.json'
+local binds = {}
+
+function jsonSave(jsonFilePath, t)
+    file = io.open(jsonFilePath, "w")
+    file:write(encodeJson(t))
+    file:flush()
+    file:close()
+end
+
+function jsonRead(jsonFilePath)
+    local file = io.open(jsonFilePath, "r+")
+    local jsonInString = file:read("*a")
+    file:close()
+    local jsonTable = decodeJson(jsonInString)
+    return jsonTable
+end
 
 local State = {
     main_window = imgui.ImBool(false),
     CheckBoxDialogID = imgui.ImBool(false),
     straboscopes = imgui.ImBool(mainIni.state.stroboscopes),
+    binder = imgui.ImBool(mainIni.state.binder),
     auto_alert_state = imgui.ImBool(mainIni.state.auto_alert),
     auto_alert_backup_text_buffer = imgui.ImBuffer(256),
+    binder_cuff_text_buffer = imgui.ImBuffer(256),
+    binder_fme_text_buffer = imgui.ImBuffer(256),
+    binder_frisk_text_buffer = imgui.ImBuffer(256),
+    binder_incar_text_buffer = imgui.ImBuffer(256),
+    binder_eject_text_buffer = imgui.ImBuffer(256),
+    binder_arest_text_buffer = imgui.ImBuffer(256),
     auto_find_state = imgui.ImBool(mainIni.state.auto_find),
     auto_fix_state = imgui.ImBool(mainIni.state.auto_fix),
     menu = 0,
@@ -126,6 +157,15 @@ local AutoFix = {
     fillTexts = {},
     tehvehTexts = {},
     isFilling = false
+}
+
+local Binder = {
+    cuff = imgui.ImBool(mainIni.state.bind_cuff),
+    fme = imgui.ImBool(mainIni.state.bind_fme),
+    frisk = imgui.ImBool(mainIni.state.bind_frisk),
+    incar = imgui.ImBool(mainIni.state.bind_incar),
+    eject = imgui.ImBool(mainIni.state.bind_eject),
+    arest = imgui.ImBool(mainIni.state.bind_arest),
 }
 
 local elements = {
@@ -168,6 +208,7 @@ end
 
 function save()
     inicfg.save(mainIni, 'Tools.ini')
+    jsonSave(json, binds)
 end
 
 -- Stroboscopes
@@ -215,12 +256,148 @@ function main()
         pcall(Update.check, Update.json_url, Update.prefix, Update.url)
     end
 
+    loadBinds()
     registerChatCommands()
     registerHotkeys()
     initializeMainThread()
 
     sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Активирован.", -1)
     sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Открыть меню - {AC0046}/tt", -1)
+end
+
+function loadBinds()
+    if not doesDirectoryExist(getWorkingDirectory() .. '\\config') then
+        createDirectory(getWorkingDirectory() ..
+            '\\config')
+    end
+    if not doesFileExist(json) then
+        local t = {
+            ['backup_text'] = u8("Требуется подкрепление. Район %s."),
+            ['cuff_text'] = u8("/do Наручники на поясе."),
+            ['fme_text'] = u8("/me взял %s за бицепс и повел перед собой."),
+            ['frisk_text'] = u8("/me ощупывает руки, ноги, торс %s, проверяя содержимое карманов."),
+            ['incar_text'] = u8("/me открыл дверь авто, помог %s сесть, пристегнул ремнем безопасности, закрыл дверь."),
+            ['eject_text'] = u8("/me открыл дверь авто, отстегнул ремень безопасности, помог %s выйти из авто."),
+            ['arest_text'] = u8("/me достал ключ от камеры, открыл дверь, завел %s, снял наручники, захлопнул дверь."),
+        }
+        jsonSave(json, t)
+    end
+    binds = jsonRead(json)
+end
+
+function bind_cuff(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ Мысли ]: Заковать в наручники [ /cuff ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.cuff.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(u8:decode(binds['cuff_text']), id))
+            wait(500)
+            sampSendChat('/cuff ' .. id)
+        end)
+    else
+        sampSendChat('/cuff ' .. id)
+    end
+end
+
+function bind_follow_me(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ Мысли ]: Вести за собой [ /fme ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.fme.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(u8:decode(binds['fme_text']), id))
+            wait(500)
+            sampSendChat('/fme ' .. id)
+        end)
+    else
+        sampSendChat('/fme ' .. id)
+    end
+end
+
+function bind_frisk(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ Мысли ]: Обыскать игрока [ /frisk ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.frisk.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(binds['frisk_text'], id))
+            wait(500)
+            sampSendChat('/frisk ' .. id)
+        end)
+    else
+        sampSendChat('/frisk ' .. id)
+    end
+end
+
+function bind_incar(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ Мысли ]: Посадить в машину [ /incar ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.incar.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(binds['incar_text'], id))
+            wait(500)
+            sampSendChat('/incar ' .. id)
+        end)
+    else
+        sampSendChat('/incar ' .. id)
+    end
+end
+
+function bind_eject(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ Мысли ]: Выкинуть из транспорта [ /eject ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.eject.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(binds['eject_text'], id))
+            wait(500)
+            sampSendChat('/eject ' .. id)
+        end)
+    else
+        sampSendChat('/eject ' .. id)
+    end
+end
+
+function bind_arest(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ Мысли ]: Посадить преступника [ /arest ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.arest.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(binds['arest_text'], id))
+            wait(500)
+            sampSendChat('/arest ' .. id)
+        end)
+    else
+        sampSendChat('/arest ' .. id)
+    end
+end
+
+function formatWithName(msg, arg)
+    local id = tonumber(arg)
+    local nickname = sampGetPlayerNickname(id)
+    local name = nickname:match("([^_]+)")
+    return (msg):format(name)
 end
 
 function registerChatCommands()
@@ -256,6 +433,15 @@ function registerChatCommands()
             end
         end
     end)
+
+    for _, bindCMD in ipairs({ 'fme', 'gme', 'gotome' }) do
+        sampRegisterChatCommand(bindCMD, bind_follow_me)
+    end
+    sampRegisterChatCommand('cuff', bind_cuff)
+    sampRegisterChatCommand('frisk', bind_frisk)
+    sampRegisterChatCommand('incar', bind_incar)
+    sampRegisterChatCommand('eject', bind_eject)
+    sampRegisterChatCommand('arest', bind_arest)
 end
 
 function registerHotkeys()
@@ -586,6 +772,7 @@ local changelog10 = [[
 11. Добавлено автообновление скрипта.
 12. Добавлен чёрный экран для ссок. /blackout
 13. Добавлен авто перенос в /d и /r.
+14. Добавлены базовые отыгровки /cuff, /fme, /frisk, /incar, /eject, /arest.
 ]]
 
 local authors = [[
@@ -644,7 +831,7 @@ end
 
 function callForBackup()
     local zone = getZoneName()
-    local backup_message = u8:decode(mainIni.config.backup_text)
+    local backup_message = u8:decode(binds['backup_text'])
     local message = ("/r " .. backup_message):format(zone)
     sampSendChat(message)
 end
@@ -843,6 +1030,7 @@ function renderLeftPanel()
         { text = u8 'Auto Find', menu = 3 },
         { text = u8 'Auto Fix (experimental)', menu = 4 },
         { text = u8 'SS Tools', menu = 5 },
+        { text = u8 'Биндер', menu = 7 },
         { text = u8 'Спец.Клавиши', menu = 9 },
         { text = u8 'Настройки', menu = 10 }
     }
@@ -866,6 +1054,7 @@ function renderRightPanel()
         [3] = menu_3,
         [4] = menu_4,
         [5] = menu_5,
+        [7] = menu_7,
         [9] = menu_9,
         [10] = menu_10
     }
@@ -885,11 +1074,11 @@ function menu_1()
         if State.straboscopes.v then
             sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {01DF01}включены{ffffff}.", State.main_color)
             mainIni.state.stroboscopes = true
-            inicfg.save(mainIni, 'Tools.ini')
+            save()
         else
             sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {ff0000}отключены{ffffff}.", State.main_color)
             mainIni.state.stroboscopes = false
-            inicfg.save(mainIni, 'Tools.ini')
+            save()
         end
     end
     imgui.SameLine()
@@ -911,15 +1100,11 @@ end
 
 function menu_2()
     if imadd.ToggleButton("##auto_alert_state", State.auto_alert_state) then
-        if State.auto_alert_state.v then
-            sampAddChatMessage("[Tools] {FFFFFF}Запрос о поддержке {01DF01}включён{ffffff}.", State.main_color)
-            mainIni.state.auto_alert = true
-            inicfg.save(mainIni, 'Tools.ini')
-        else
-            sampAddChatMessage("[Tools] {FFFFFF}Запрос о поддержке {ff0000}отключён{ffffff}.", State.main_color)
-            mainIni.state.auto_alert = false
-            inicfg.save(mainIni, 'Tools.ini')
-        end
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Запрос о поддержке " ..
+            (State.auto_alert_state.v and "{01DF01}включён" or "{ff0000}отключён") .. "{ffffff}.", State.main_color)
+        mainIni.state.auto_alert = State.auto_alert_state.v
+        save()
     end
     imgui.SameLine()
     imgui.Text(u8 "Запрос о поддержке")
@@ -927,7 +1112,7 @@ function menu_2()
     if imgui.HotKey("##HotKeys.backup", HotKeys.backup) then
         rkeys.changeHotKey(ID_BACKUP, HotKeys.backup.v)
         mainIni.hotkeys.backup = encodeJson(HotKeys.backup.v)
-        inicfg.save(mainIni, 'Tools.ini')
+        save()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
@@ -936,7 +1121,7 @@ function menu_2()
     if imgui.HotKey("##HotKeys.su", HotKeys.su) then
         rkeys.changeHotKey(ID_SU, HotKeys.su.v)
         mainIni.hotkeys.su = encodeJson(HotKeys.su.v)
-        inicfg.save(mainIni, 'Tools.ini')
+        save()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
@@ -946,25 +1131,21 @@ function menu_2()
     imgui.SameLine()
     imgui.HelpMarker(u8 "Используйте #zone для указания района. Например: Требуется подкрепление. Район #zone.")
 
-    State.auto_alert_backup_text_buffer.v = mainIni.config.backup_text:gsub("%%s", "#zone")
-    if imgui.InputText(u8 '', State.auto_alert_backup_text_buffer) then
+    State.auto_alert_backup_text_buffer.v = binds['backup_text']:gsub("%%s", "#zone")
+    if imgui.InputText('##auto_alert_backup_text_buffer', State.auto_alert_backup_text_buffer) then
         local backup_text = State.auto_alert_backup_text_buffer.v:gsub("#zone", "%%s")
-        mainIni.config.backup_text = backup_text
-        inicfg.save(mainIni, 'Tools.ini')
+        binds['backup_text'] = backup_text
+        save()
     end
 end
 
 function menu_3()
     if imadd.ToggleButton("##auto_find_state", State.auto_find_state) then
-        if State.auto_find_state.v then
-            sampAddChatMessage("[Tools] {FFFFFF}Автопоиск {01DF01}включён{ffffff}.", State.main_color)
-            mainIni.state.auto_find = true
-            inicfg.save(mainIni, 'Tools.ini')
-        else
-            sampAddChatMessage("[Tools] {FFFFFF}Автопоиск {ff0000}отключён{ffffff}.", State.main_color)
-            mainIni.state.auto_find = false
-            inicfg.save(mainIni, 'Tools.ini')
-        end
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Автопоиск " ..
+            (State.auto_find_state.v and "{01DF01}включён" or "{ff0000}отключён") .. "{ffffff}.", State.main_color)
+        mainIni.state.auto_find = State.auto_find_state.v
+        save()
     end
     imgui.SameLine()
     imgui.Text(u8 "Автопоиск")
@@ -978,7 +1159,7 @@ function menu_3()
     -- for i = 10, 1, -1 do
     --     if imgui.RadioButton(tostring(i), mainIni.config.auto_find_level_selected == i) then
     --         mainIni.config.auto_find_level_selected = i
-    --         inicfg.save(mainIni, 'Tools.ini')
+    --         save()
     --     end
     --     imgui.SameLine()
     -- end
@@ -986,15 +1167,11 @@ end
 
 function menu_4()
     if imadd.ToggleButton("##auto_fix_state", State.auto_fix_state) then
-        if State.auto_fix_state.v then
-            sampAddChatMessage("[Tools] {FFFFFF}Автопочинка {01DF01}включена{ffffff}.", State.main_color)
-            mainIni.state.auto_fix = true
-            inicfg.save(mainIni, 'Tools.ini')
-        else
-            sampAddChatMessage("[Tools] {FFFFFF}Автопочинка {ff0000}отключена{ffffff}.", State.main_color)
-            mainIni.state.auto_fix = false
-            inicfg.save(mainIni, 'Tools.ini')
-        end
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Автопочинка " ..
+            (State.auto_fix_state.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.auto_fix = State.auto_fix_state.v
+        save()
     end
     imgui.SameLine()
     imgui.Text(u8 "Автопочинка и автозаправка")
@@ -1008,12 +1185,134 @@ function menu_5()
     imgui.Text(u8 "/blackout - чёрный экран.")
 end
 
+function menu_7()
+    imgui.CenterText(u8 'Базовые отыгровки')
+    imgui.Separator()
+    if imadd.ToggleButton("##binder", State.binder) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Биндер " ..
+            (State.binder.v and "{01DF01}включён" or "{ff0000}отключён") .. "{ffffff}.", State.main_color)
+        mainIni.state.binder = State.binder.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Биндер")
+    imgui.SameLine()
+    imgui.HelpMarker(u8 "Впишите вашу отыгровку или оставьте как есть, #name заменяется на имя человека id которого вы вписали.")
+    if imadd.ToggleButton("##bindcuff", Binder.cuff) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка наручников " ..
+            (Binder.cuff.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_cuff = Binder.cuff.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка наручников")
+    State.binder_cuff_text_buffer.v = binds['cuff_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_cuff_text_buffer', State.binder_cuff_text_buffer) then
+        local text = State.binder_cuff_text_buffer.v:gsub("#name", "%%s")
+        binds['cuff_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindfme", Binder.fme) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка вести за собой " ..
+            (Binder.fme.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_fme = Binder.fme.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка вести за собой")
+    State.binder_fme_text_buffer.v = binds['fme_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_fme_text_buffer', State.binder_fme_text_buffer) then
+        binds['fme_text'] = State.binder_fme_text_buffer.v:gsub("#name", "%%s")
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindfrisk", Binder.frisk) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка обыска " ..
+            (Binder.frisk.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_frisk = Binder.frisk.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка обыска")
+    State.binder_frisk_text_buffer.v = binds['frisk_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_frisk_text_buffer', State.binder_frisk_text_buffer) then
+        local text = State.binder_frisk_text_buffer.v:gsub("#name", "%%s")
+        binds['frisk_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindincar", Binder.incar) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка /incar " ..
+            (Binder.incar.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_incar = Binder.incar.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка /incar")
+    State.binder_incar_text_buffer.v = binds['incar_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_incar_text_buffer', State.binder_incar_text_buffer) then
+        local text = State.binder_incar_text_buffer.v:gsub("#name", "%%s")
+        binds['incar_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindeject", Binder.eject) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка /eject " ..
+            (Binder.eject.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_eject = Binder.eject.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка /eject")
+    State.binder_eject_text_buffer.v = binds['eject_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_eject_text_buffer', State.binder_eject_text_buffer) then
+        local text = State.binder_eject_text_buffer.v:gsub("#name", "%%s")
+        binds['eject_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindarest", Binder.arest) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка /arest " ..
+            (Binder.arest.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_arest = Binder.arest.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка /arest")
+    State.binder_arest_text_buffer.v = binds['arest_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_arest_text_buffer', State.binder_arest_text_buffer) then
+        local text = State.binder_arest_text_buffer.v:gsub("#name", "%%s")
+        binds['arest_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+end
+
 function menu_9()
     -- callback 1
     if imgui.HotKey("##HotKeys.main_menu", HotKeys.main_menu) then
         rkeys.changeHotKey(ID_MAIN_MENU, HotKeys.main_menu.v)
         mainIni.hotkeys.main_menu = encodeJson(HotKeys.main_menu.v)
-        inicfg.save(mainIni, 'Tools.ini')
+        save()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
@@ -1022,7 +1321,7 @@ function menu_9()
     if imgui.HotKey("##HotKeys.battlepass", HotKeys.battlepass) then
         rkeys.changeHotKey(ID_BATTLEPASS, HotKeys.battlepass.v)
         mainIni.hotkeys.battlepass = encodeJson(HotKeys.battlepass.v)
-        inicfg.save(mainIni, 'Tools.ini')
+        save()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
@@ -1032,7 +1331,7 @@ end
 function menu_10()
     local styles = { u8 "Серая", u8 "Красная", u8 "Фиолетовая", u8 "Чёрная", u8 "Синяя", u8 "Оранжевая", u8 "Розовая" }
     imgui.Combo(u8 'Стиль интерфейса', elements.int.intImGui, styles)
-    -- imgui.Separator()
+    imgui.Separator()
     -- if imadd.ToggleButton("##idDialog", State.CheckBoxDialogID) then
     --     if State.CheckBoxDialogID.v then
     --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {01DF01}включён{ffffff}.", State.main_color)
@@ -1042,7 +1341,6 @@ function menu_10()
     -- end
     -- imgui.SameLine()
     -- imgui.TextColoredRGB('[Выкл/Вкл]  {FF0000}Dialog ID')
-    -- imgui.SameLine()
 end
 
 function renderLeftPanel()
@@ -1054,6 +1352,7 @@ function renderLeftPanel()
         { text = u8 'Auto Find', menu = 3 },
         { text = u8 'Auto Fix (experimental)', menu = 4 },
         { text = u8 'SS Tools', menu = 5 },
+        { text = u8 'Биндер', menu = 7 },
         { text = u8 'Спец.Клавиши', menu = 9 },
         { text = u8 'Настройки', menu = 10 }
     }
