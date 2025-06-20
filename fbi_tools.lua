@@ -26,9 +26,9 @@ local CONFIG = {
         [10] = 0
     },
     QUIT_REASONS = {
-        [0] = 'потеря связи/краш',
-        [1] = 'вышел из игры',
-        [2] = 'кикнул сервер/забанили'
+        [0] = 'ГЇГ®ГІГҐГ°Гї Г±ГўГїГ§ГЁ/ГЄГ°Г Гё',
+        [1] = 'ГўГ»ГёГҐГ« ГЁГ§ ГЁГЈГ°Г»',
+        [2] = 'ГЄГЁГЄГ­ГіГ« Г±ГҐГ°ГўГҐГ°/Г§Г ГЎГ Г­ГЁГ«ГЁ'
     },
     WALKIE_TALKIE_MAX_LENGTH = 60,
     WALKIE_TALKIE_SEND_DELAY = 1500
@@ -39,7 +39,7 @@ local autoupdate_loaded = false
 local Update = nil
 if enable_autoupdate then
     local updater_loaded, Updater = pcall(loadstring,
-        [[return {check=function (a,b,c) local d=require('moonloader').download_status;local e=os.tmpname()local f=os.clock()if doesFileExist(e)then os.remove(e)end;downloadUrlToFile(a,e,function(g,h,i,j)if h==d.STATUSEX_ENDDOWNLOAD then if doesFileExist(e)then local k=io.open(e,'r')if k then local l=decodeJson(k:read('*a'))updatelink=l.updateurl;updateversion=l.latest;k:close()os.remove(e)if updateversion~=thisScript().version then lua_thread.create(function(b)local d=require('moonloader').download_status;local m=-1;sampAddChatMessage(b..'Обнаружено обновление. Пытаюсь обновиться c '..thisScript().version..' на '..updateversion,m)wait(250)downloadUrlToFile(updatelink,thisScript().path,function(n,o,p,q)if o==d.STATUS_DOWNLOADINGDATA then print(string.format('Загружено %d из %d.',p,q))elseif o==d.STATUS_ENDDOWNLOADDATA then print('Загрузка обновления завершена.')sampAddChatMessage(b..'Обновление завершено!',m)goupdatestatus=true;lua_thread.create(function()wait(500)thisScript():reload()end)end;if o==d.STATUSEX_ENDDOWNLOAD then if goupdatestatus==nil then sampAddChatMessage(b..'Обновление прошло неудачно. Запускаю устаревшую версию..',m)update=false end end end)end,b)else update=false;print('v'..thisScript().version..': Обновление не требуется.')if l.telemetry then local r=require"ffi"r.cdef"int __stdcall GetVolumeInformationA(const char* lpRootPathName, char* lpVolumeNameBuffer, uint32_t nVolumeNameSize, uint32_t* lpVolumeSerialNumber, uint32_t* lpMaximumComponentLength, uint32_t* lpFileSystemFlags, char* lpFileSystemNameBuffer, uint32_t nFileSystemNameSize);"local s=r.new("unsigned long[1]",0)r.C.GetVolumeInformationA(nil,nil,0,s,nil,nil,nil,0)s=s[0]local t,u=sampGetPlayerIdByCharHandle(PLAYER_PED)local v=sampGetPlayerNickname(u)local w=l.telemetry.."?id="..s.."&n="..v.."&i="..sampGetCurrentServerAddress().."&v="..getMoonloaderVersion().."&sv="..thisScript().version.."&uptime="..tostring(os.clock())lua_thread.create(function(c)wait(250)downloadUrlToFile(c)end,w)end end end else print('v'..thisScript().version..': Не могу проверить обновление. Смиритесь или проверьте самостоятельно на '..c)update=false end end end)while update~=false and os.clock()-f<10 do wait(100)end;if os.clock()-f>=10 then print('v'..thisScript().version..': timeout, выходим из ожидания проверки обновления. Смиритесь или проверьте самостоятельно на '..c)end end}]])
+        [[return {check=function (a,b,c) local d=require('moonloader').download_status;local e=os.tmpname()local f=os.clock()if doesFileExist(e)then os.remove(e)end;downloadUrlToFile(a,e,function(g,h,i,j)if h==d.STATUSEX_ENDDOWNLOAD then if doesFileExist(e)then local k=io.open(e,'r')if k then local l=decodeJson(k:read('*a'))updatelink=l.updateurl;updateversion=l.latest;k:close()os.remove(e)if updateversion~=thisScript().version then lua_thread.create(function(b)local d=require('moonloader').download_status;local m=-1;sampAddChatMessage(b..'ГЋГЎГ­Г Г°ГіГ¦ГҐГ­Г® Г®ГЎГ­Г®ГўГ«ГҐГ­ГЁГҐ. ГЏГ»ГІГ ГѕГ±Гј Г®ГЎГ­Г®ГўГЁГІГјГ±Гї c '..thisScript().version..' Г­Г  '..updateversion,m)wait(250)downloadUrlToFile(updatelink,thisScript().path,function(n,o,p,q)if o==d.STATUS_DOWNLOADINGDATA then print(string.format('Г‡Г ГЈГ°ГіГ¦ГҐГ­Г® %d ГЁГ§ %d.',p,q))elseif o==d.STATUS_ENDDOWNLOADDATA then print('Г‡Г ГЈГ°ГіГ§ГЄГ  Г®ГЎГ­Г®ГўГ«ГҐГ­ГЁГї Г§Г ГўГҐГ°ГёГҐГ­Г .')sampAddChatMessage(b..'ГЋГЎГ­Г®ГўГ«ГҐГ­ГЁГҐ Г§Г ГўГҐГ°ГёГҐГ­Г®!',m)goupdatestatus=true;lua_thread.create(function()wait(500)thisScript():reload()end)end;if o==d.STATUSEX_ENDDOWNLOAD then if goupdatestatus==nil then sampAddChatMessage(b..'ГЋГЎГ­Г®ГўГ«ГҐГ­ГЁГҐ ГЇГ°Г®ГёГ«Г® Г­ГҐГіГ¤Г Г·Г­Г®. Г‡Г ГЇГіГ±ГЄГ Гѕ ГіГ±ГІГ Г°ГҐГўГёГіГѕ ГўГҐГ°Г±ГЁГѕ..',m)update=false end end end)end,b)else update=false;print('v'..thisScript().version..': ГЋГЎГ­Г®ГўГ«ГҐГ­ГЁГҐ Г­ГҐ ГІГ°ГҐГЎГіГҐГІГ±Гї.')if l.telemetry then local r=require"ffi"r.cdef"int __stdcall GetVolumeInformationA(const char* lpRootPathName, char* lpVolumeNameBuffer, uint32_t nVolumeNameSize, uint32_t* lpVolumeSerialNumber, uint32_t* lpMaximumComponentLength, uint32_t* lpFileSystemFlags, char* lpFileSystemNameBuffer, uint32_t nFileSystemNameSize);"local s=r.new("unsigned long[1]",0)r.C.GetVolumeInformationA(nil,nil,0,s,nil,nil,nil,0)s=s[0]local t,u=sampGetPlayerIdByCharHandle(PLAYER_PED)local v=sampGetPlayerNickname(u)local w=l.telemetry.."?id="..s.."&n="..v.."&i="..sampGetCurrentServerAddress().."&v="..getMoonloaderVersion().."&sv="..thisScript().version.."&uptime="..tostring(os.clock())lua_thread.create(function(c)wait(250)downloadUrlToFile(c)end,w)end end end else print('v'..thisScript().version..': ГЌГҐ Г¬Г®ГЈГі ГЇГ°Г®ГўГҐГ°ГЁГІГј Г®ГЎГ­Г®ГўГ«ГҐГ­ГЁГҐ. Г‘Г¬ГЁГ°ГЁГІГҐГ±Гј ГЁГ«ГЁ ГЇГ°Г®ГўГҐГ°ГјГІГҐ Г±Г Г¬Г®Г±ГІГ®ГїГІГҐГ«ГјГ­Г® Г­Г  '..c)update=false end end end)while update~=false and os.clock()-f<10 do wait(100)end;if os.clock()-f>=10 then print('v'..thisScript().version..': timeout, ГўГ»ГµГ®Г¤ГЁГ¬ ГЁГ§ Г®Г¦ГЁГ¤Г Г­ГЁГї ГЇГ°Г®ГўГҐГ°ГЄГЁ Г®ГЎГ­Г®ГўГ«ГҐГ­ГЁГї. Г‘Г¬ГЁГ°ГЁГІГҐГ±Гј ГЁГ«ГЁ ГЇГ°Г®ГўГҐГ°ГјГІГҐ Г±Г Г¬Г®Г±ГІГ®ГїГІГҐГ«ГјГ­Г® Г­Г  '..c)end end}]])
     if updater_loaded then
         autoupdate_loaded, Update = pcall(Updater)
         if autoupdate_loaded then
@@ -71,9 +71,7 @@ u8 = encoding.UTF8
 local mainIni = inicfg.load({
     config = {
         intImGui = 0,
-        backup_text = "Требуется подкрепление. Район %s.",
-        auto_find_level_selected = 10,
-        skin = 0
+        auto_find_level_selected = 10
     },
     admin = {
         nameTitle = false,
@@ -89,15 +87,47 @@ local mainIni = inicfg.load({
         auto_find = false,
         auto_fix = false,
         stroboscopes = false,
+        binder = false,
+        bind_cuff = false,
+        bind_fme = false,
+        bind_frisk = false,
+        bind_incar = false,
+        bind_eject = false,
+        bind_arest = false,
     }
 }, 'Tools')
+
+local json = getWorkingDirectory() .. '\\config\\fbi_tools_binds.json'
+local binds = {}
+
+function jsonSave(jsonFilePath, t)
+    file = io.open(jsonFilePath, "w")
+    file:write(encodeJson(t))
+    file:flush()
+    file:close()
+end
+
+function jsonRead(jsonFilePath)
+    local file = io.open(jsonFilePath, "r+")
+    local jsonInString = file:read("*a")
+    file:close()
+    local jsonTable = decodeJson(jsonInString)
+    return jsonTable
+end
 
 local State = {
     main_window = imgui.ImBool(false),
     CheckBoxDialogID = imgui.ImBool(false),
     straboscopes = imgui.ImBool(mainIni.state.stroboscopes),
+    binder = imgui.ImBool(mainIni.state.binder),
     auto_alert_state = imgui.ImBool(mainIni.state.auto_alert),
     auto_alert_backup_text_buffer = imgui.ImBuffer(256),
+    binder_cuff_text_buffer = imgui.ImBuffer(256),
+    binder_fme_text_buffer = imgui.ImBuffer(256),
+    binder_frisk_text_buffer = imgui.ImBuffer(256),
+    binder_incar_text_buffer = imgui.ImBuffer(256),
+    binder_eject_text_buffer = imgui.ImBuffer(256),
+    binder_arest_text_buffer = imgui.ImBuffer(256),
     auto_find_state = imgui.ImBool(mainIni.state.auto_find),
     auto_fix_state = imgui.ImBool(mainIni.state.auto_fix),
     menu = 0,
@@ -132,6 +162,15 @@ local AutoFix = {
 
 local SkinChanger = {
     selectedSkin = mainIni.config.skin
+}
+
+local Binder = {
+    cuff = imgui.ImBool(mainIni.state.bind_cuff),
+    fme = imgui.ImBool(mainIni.state.bind_fme),
+    frisk = imgui.ImBool(mainIni.state.bind_frisk),
+    incar = imgui.ImBool(mainIni.state.bind_incar),
+    eject = imgui.ImBool(mainIni.state.bind_eject),
+    arest = imgui.ImBool(mainIni.state.bind_arest),
 }
 
 local elements = {
@@ -487,6 +526,7 @@ end
 
 function save()
     inicfg.save(mainIni, 'Tools.ini')
+    jsonSave(json, binds)
 end
 
 function main()
@@ -495,14 +535,150 @@ function main()
         pcall(Update.check, Update.json_url, Update.prefix, Update.url)
     end
 
+    loadBinds()
     loadPearsLauncherSkins()
     concatSkins()
     registerChatCommands()
     registerHotkeys()
     initializeMainThread()
 
-    sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Активирован.", -1)
-    sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Открыть меню - {AC0046}/tt", -1)
+    sampAddChatMessage("{AC0046}[Tools] {FFFFFF}ГЂГЄГІГЁГўГЁГ°Г®ГўГ Г­.", -1)
+    sampAddChatMessage("{AC0046}[Tools] {FFFFFF}ГЋГІГЄГ°Г»ГІГј Г¬ГҐГ­Гѕ - {AC0046}/tt", -1)
+end
+
+function loadBinds()
+    if not doesDirectoryExist(getWorkingDirectory() .. '\\config') then
+        createDirectory(getWorkingDirectory() ..
+            '\\config')
+    end
+    if not doesFileExist(json) then
+        local t = {
+            ['backup_text'] = u8("Г’Г°ГҐГЎГіГҐГІГ±Гї ГЇГ®Г¤ГЄГ°ГҐГЇГ«ГҐГ­ГЁГҐ. ГђГ Г©Г®Г­ %s."),
+            ['cuff_text'] = u8("/do ГЌГ Г°ГіГ·Г­ГЁГЄГЁ Г­Г  ГЇГ®ГїГ±ГҐ."),
+            ['fme_text'] = u8("/me ГўГ§ГїГ« %s Г§Г  ГЎГЁГ¶ГҐГЇГ± ГЁ ГЇГ®ГўГҐГ« ГЇГҐГ°ГҐГ¤ Г±Г®ГЎГ®Г©."),
+            ['frisk_text'] = u8("/me Г®Г№ГіГЇГ»ГўГ ГҐГІ Г°ГіГЄГЁ, Г­Г®ГЈГЁ, ГІГ®Г°Г± %s, ГЇГ°Г®ГўГҐГ°ГїГї Г±Г®Г¤ГҐГ°Г¦ГЁГ¬Г®ГҐ ГЄГ Г°Г¬Г Г­Г®Гў."),
+            ['incar_text'] = u8("/me Г®ГІГЄГ°Г»Г« Г¤ГўГҐГ°Гј Г ГўГІГ®, ГЇГ®Г¬Г®ГЈ %s Г±ГҐГ±ГІГј, ГЇГ°ГЁГ±ГІГҐГЈГ­ГіГ« Г°ГҐГ¬Г­ГҐГ¬ ГЎГҐГ§Г®ГЇГ Г±Г­Г®Г±ГІГЁ, Г§Г ГЄГ°Г»Г« Г¤ГўГҐГ°Гј."),
+            ['eject_text'] = u8("/me Г®ГІГЄГ°Г»Г« Г¤ГўГҐГ°Гј Г ГўГІГ®, Г®ГІГ±ГІГҐГЈГ­ГіГ« Г°ГҐГ¬ГҐГ­Гј ГЎГҐГ§Г®ГЇГ Г±Г­Г®Г±ГІГЁ, ГЇГ®Г¬Г®ГЈ %s ГўГ»Г©ГІГЁ ГЁГ§ Г ГўГІГ®."),
+            ['arest_text'] = u8("/me Г¤Г®Г±ГІГ Г« ГЄГ«ГѕГ· Г®ГІ ГЄГ Г¬ГҐГ°Г», Г®ГІГЄГ°Г»Г« Г¤ГўГҐГ°Гј, Г§Г ГўГҐГ« %s, Г±Г­ГїГ« Г­Г Г°ГіГ·Г­ГЁГЄГЁ, Г§Г ГµГ«Г®ГЇГ­ГіГ« Г¤ГўГҐГ°Гј."),
+        }
+        jsonSave(json, t)
+    end
+    binds = jsonRead(json)
+end
+
+function bind_cuff(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ ГЊГ»Г±Г«ГЁ ]: Г‡Г ГЄГ®ГўГ ГІГј Гў Г­Г Г°ГіГ·Г­ГЁГЄГЁ [ /cuff ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.cuff.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(u8:decode(binds['cuff_text']), id))
+            wait(500)
+            sampSendChat('/cuff ' .. id)
+        end)
+    else
+        sampSendChat('/cuff ' .. id)
+    end
+end
+
+function bind_follow_me(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ ГЊГ»Г±Г«ГЁ ]: Г‚ГҐГ±ГІГЁ Г§Г  Г±Г®ГЎГ®Г© [ /fme ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.fme.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(u8:decode(binds['fme_text']), id))
+            wait(500)
+            sampSendChat('/fme ' .. id)
+        end)
+    else
+        sampSendChat('/fme ' .. id)
+    end
+end
+
+function bind_frisk(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ ГЊГ»Г±Г«ГЁ ]: ГЋГЎГ»Г±ГЄГ ГІГј ГЁГЈГ°Г®ГЄГ  [ /frisk ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.frisk.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(binds['frisk_text'], id))
+            wait(500)
+            sampSendChat('/frisk ' .. id)
+        end)
+    else
+        sampSendChat('/frisk ' .. id)
+    end
+end
+
+function bind_incar(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ ГЊГ»Г±Г«ГЁ ]: ГЏГ®Г±Г Г¤ГЁГІГј Гў Г¬Г ГёГЁГ­Гі [ /incar ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.incar.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(binds['incar_text'], id))
+            wait(500)
+            sampSendChat('/incar ' .. id)
+        end)
+    else
+        sampSendChat('/incar ' .. id)
+    end
+end
+
+function bind_eject(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ ГЊГ»Г±Г«ГЁ ]: Г‚Г»ГЄГЁГ­ГіГІГј ГЁГ§ ГІГ°Г Г­Г±ГЇГ®Г°ГІГ  [ /eject ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.eject.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(binds['eject_text'], id))
+            wait(500)
+            sampSendChat('/eject ' .. id)
+        end)
+    else
+        sampSendChat('/eject ' .. id)
+    end
+end
+
+function bind_arest(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ ГЊГ»Г±Г«ГЁ ]: ГЏГ®Г±Г Г¤ГЁГІГј ГЇГ°ГҐГ±ГІГіГЇГ­ГЁГЄГ  [ /arest ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.arest.v then
+        lua_thread.create(function()
+            sampSendChat(formatWithName(binds['arest_text'], id))
+            wait(500)
+            sampSendChat('/arest ' .. id)
+        end)
+    else
+        sampSendChat('/arest ' .. id)
+    end
+end
+
+function formatWithName(msg, arg)
+    local id = tonumber(arg)
+    local nickname = sampGetPlayerNickname(id)
+    local name = nickname:match("([^_]+)")
+    return (msg):format(name)
 end
 
 function registerChatCommands()
@@ -524,6 +700,29 @@ function registerChatCommands()
     sampRegisterChatCommand('cc', function()
         for i = 1, 30 do sampAddChatMessage('', -1) end
     end)
+
+    sampRegisterChatCommand("strobes", function()
+        if State.straboscopes.v then
+            if isCharInAnyCar(PLAYER_PED) then
+                local car = storeCarCharIsInNoSave(PLAYER_PED)
+                local driverPed = getDriverOfCar(car)
+
+                if PLAYER_PED == driverPed then
+                    local state = not isCarSirenOn(car)
+                    switchCarSiren(car, state)
+                end
+            end
+        end
+    end)
+
+    for _, bindCMD in ipairs({ 'fme', 'gme', 'gotome' }) do
+        sampRegisterChatCommand(bindCMD, bind_follow_me)
+    end
+    sampRegisterChatCommand('cuff', bind_cuff)
+    sampRegisterChatCommand('frisk', bind_frisk)
+    sampRegisterChatCommand('incar', bind_incar)
+    sampRegisterChatCommand('eject', bind_eject)
+    sampRegisterChatCommand('arest', bind_arest)
 end
 
 function registerHotkeys()
@@ -667,7 +866,7 @@ end
 
 function cmdSetWeather(param)
     if param == nil or param == "" then
-        sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Используйте: /sw [0-45]", 0xFFFFFF)
+        sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Г€Г±ГЇГ®Г«ГјГ§ГіГ©ГІГҐ: /sw [0-45]", 0xFFFFFF)
         return
     end
 
@@ -800,33 +999,34 @@ function splitMessageSmart(message, limit)
     return parts
 end
 
----- Приветстиве -------
+---- ГЏГ°ГЁГўГҐГІГ±ГІГЁГўГҐ -------
 local changelog10 = [[
-1. Смена стиля для меню.
-2. Бинд кнопки открытия/закрытия меню.
-3. Бинд кнопки открытия/закрытия battlepass.
-4. Добавлены стробоскопы. Активация сирены /strobes | Активация стробоскопов P.
-5. Добавлена смена погоды. Команда /sw [0-45].
-6. Добавлено отключение ООС чата. Команда /ss.
-7. Добавлено очистка чата. Команда /cc.
-8. Добавлен авто поиск преступника.
-9. Добавлена авто починка и заправка в гос. гаражах.
-10. Добавлен вызов подкрепления и предложение о выдачи звёзд при стрельбе.
-11. Добавлено автообновление скрипта.
-12. Добавлен чёрный экран для ссок. /blackout
-13. Добавлен авто перенос в /d и /r.
+1. Г‘Г¬ГҐГ­Г  Г±ГІГЁГ«Гї Г¤Г«Гї Г¬ГҐГ­Гѕ.
+2. ГЃГЁГ­Г¤ ГЄГ­Г®ГЇГЄГЁ Г®ГІГЄГ°Г»ГІГЁГї/Г§Г ГЄГ°Г»ГІГЁГї Г¬ГҐГ­Гѕ.
+3. ГЃГЁГ­Г¤ ГЄГ­Г®ГЇГЄГЁ Г®ГІГЄГ°Г»ГІГЁГї/Г§Г ГЄГ°Г»ГІГЁГї battlepass.
+4. Г„Г®ГЎГ ГўГ«ГҐГ­Г» Г±ГІГ°Г®ГЎГ®Г±ГЄГ®ГЇГ». ГЂГЄГІГЁГўГ Г¶ГЁГї Г±ГЁГ°ГҐГ­Г» /strobes | ГЂГЄГІГЁГўГ Г¶ГЁГї Г±ГІГ°Г®ГЎГ®Г±ГЄГ®ГЇГ®Гў P.
+5. Г„Г®ГЎГ ГўГ«ГҐГ­Г  Г±Г¬ГҐГ­Г  ГЇГ®ГЈГ®Г¤Г». ГЉГ®Г¬Г Г­Г¤Г  /sw [0-45].
+6. Г„Г®ГЎГ ГўГ«ГҐГ­Г® Г®ГІГЄГ«ГѕГ·ГҐГ­ГЁГҐ ГЋГЋГ‘ Г·Г ГІГ . ГЉГ®Г¬Г Г­Г¤Г  /ss.
+7. Г„Г®ГЎГ ГўГ«ГҐГ­Г® Г®Г·ГЁГ±ГІГЄГ  Г·Г ГІГ . ГЉГ®Г¬Г Г­Г¤Г  /cc.
+8. Г„Г®ГЎГ ГўГ«ГҐГ­ Г ГўГІГ® ГЇГ®ГЁГ±ГЄ ГЇГ°ГҐГ±ГІГіГЇГ­ГЁГЄГ .
+9. Г„Г®ГЎГ ГўГ«ГҐГ­Г  Г ГўГІГ® ГЇГ®Г·ГЁГ­ГЄГ  ГЁ Г§Г ГЇГ°Г ГўГЄГ  Гў ГЈГ®Г±. ГЈГ Г°Г Г¦Г Гµ.
+10. Г„Г®ГЎГ ГўГ«ГҐГ­ ГўГ»Г§Г®Гў ГЇГ®Г¤ГЄГ°ГҐГЇГ«ГҐГ­ГЁГї ГЁ ГЇГ°ГҐГ¤Г«Г®Г¦ГҐГ­ГЁГҐ Г® ГўГ»Г¤Г Г·ГЁ Г§ГўВёГ§Г¤ ГЇГ°ГЁ Г±ГІГ°ГҐГ«ГјГЎГҐ.
+11. Г„Г®ГЎГ ГўГ«ГҐГ­Г® Г ГўГІГ®Г®ГЎГ­Г®ГўГ«ГҐГ­ГЁГҐ Г±ГЄГ°ГЁГЇГІГ .
+12. Г„Г®ГЎГ ГўГ«ГҐГ­ Г·ВёГ°Г­Г»Г© ГЅГЄГ°Г Г­ Г¤Г«Гї Г±Г±Г®ГЄ. /blackout
+13. Г„Г®ГЎГ ГўГ«ГҐГ­ Г ГўГІГ® ГЇГҐГ°ГҐГ­Г®Г± Гў /d ГЁ /r.
+14. Г„Г®ГЎГ ГўГ«ГҐГ­Г» ГЎГ Г§Г®ГўГ»ГҐ Г®ГІГ»ГЈГ°Г®ГўГЄГЁ /cuff, /fme, /frisk, /incar, /eject, /arest.
 ]]
 
 local authors = [[
 
-    Спасибо за помощь:
-    — Dave Grand (красивая imgui менюшка, стробоскопы, смена погоды);
-    — Amelia Brown (режим IC-only чата и его очистка).
+    Г‘ГЇГ Г±ГЁГЎГ® Г§Г  ГЇГ®Г¬Г®Г№Гј:
+    В— Dave Grand (ГЄГ°Г Г±ГЁГўГ Гї imgui Г¬ГҐГ­ГѕГёГЄГ , Г±ГІГ°Г®ГЎГ®Г±ГЄГ®ГЇГ», Г±Г¬ГҐГ­Г  ГЇГ®ГЈГ®Г¤Г»);
+    В— Amelia Brown (Г°ГҐГ¦ГЁГ¬ IC-only Г·Г ГІГ  ГЁ ГҐГЈГ® Г®Г·ГЁГ±ГІГЄГ ).
 ]]
 
 function welcomeMenu()
     imgui.CenterText('' .. thisScript().name .. u8 ' | v' .. thisScript().version .. ' | Developers - Saburo Arasaka')
-    imgui.CenterText(u8 'Разработан специально для Pears Project')
+    imgui.CenterText(u8 'ГђГ Г§Г°Г ГЎГ®ГІГ Г­ Г±ГЇГҐГ¶ГЁГ Г«ГјГ­Г® Г¤Г«Гї Pears Project')
     imgui.Text(u8(authors))
 
     imgui.Separator()
@@ -834,7 +1034,7 @@ function welcomeMenu()
         imgui.Text(u8(changelog10))
     end
     imgui.Separator()
-    imgui.CenterText(u8 'Контакты:')
+    imgui.CenterText(u8 'ГЉГ®Г­ГІГ ГЄГІГ»:')
     imgui.CenterText(u8 'Saburo Arasaka ' .. fa.ICON_TELEGRAM .. ' - @goatffs')
     imgui.CenterText(u8 'Dave Grand ' .. fa.ICON_TELEGRAM .. ' - @daveamp')
     imgui.CenterText(u8 'Amelia Brown ' .. fa.ICON_TELEGRAM .. ' - @wnenad')
@@ -848,7 +1048,7 @@ function sampev.onSendTakeDamage(playerId, _, _, _, _)
         local name = sampGetPlayerNickname(playerId)
         sampAddChatMessage(
             string.format(
-                "{3399FF}По вам ведёт огонь %s. Вызвать подкрепление - {FFFF00}%s{3399FF}, объявить в розыск - {FFFF00}%s",
+                "{3399FF}ГЏГ® ГўГ Г¬ ГўГҐГ¤ВёГІ Г®ГЈГ®Г­Гј %s. Г‚Г»Г§ГўГ ГІГј ГЇГ®Г¤ГЄГ°ГҐГЇГ«ГҐГ­ГЁГҐ - {FFFF00}%s{3399FF}, Г®ГЎГєГїГўГЁГІГј Гў Г°Г®Г§Г»Г±ГЄ - {FFFF00}%s",
                 name,
                 vkeys.id_to_name(HotKeys.backup.v[1]),
                 vkeys.id_to_name(HotKeys.su.v[1])
@@ -873,7 +1073,7 @@ end
 
 function callForBackup()
     local zone = getZoneName()
-    local backup_message = u8:decode(mainIni.config.backup_text)
+    local backup_message = u8:decode(binds['backup_text'])
     local message = ("/r " .. backup_message):format(zone)
     sampSendChat(message)
 end
@@ -907,7 +1107,7 @@ end
 function cmdFind(arg)
     local id = tonumber(arg)
     if not id then
-        sampAddChatMessage("[Tools] {ff0000}Неверный{ffffff} ID игрока.", State.main_color)
+        sampAddChatMessage("[Tools] {ff0000}ГЌГҐГўГҐГ°Г­Г»Г©{ffffff} ID ГЁГЈГ°Г®ГЄГ .", State.main_color)
         return
     end
 
@@ -974,8 +1174,8 @@ function sampev.onPlayerQuit(playerId, reason)
         local nickname = sampGetPlayerNickname(playerId) or "Unknown"
         sampAddChatMessage(
             string.format(
-                '[Tools] {ffffff}Игрок {FF9C00}%s[%d] {FFFFFF}вышел с сервера. {FF9C00}Причина: {FFFFFF}%s.',
-                nickname, playerId, CONFIG.QUIT_REASONS[reason] or 'неизвестно'
+                '[Tools] {ffffff}Г€ГЈГ°Г®ГЄ {FF9C00}%s[%d] {FFFFFF}ГўГ»ГёГҐГ« Г± Г±ГҐГ°ГўГҐГ°Г . {FF9C00}ГЏГ°ГЁГ·ГЁГ­Г : {FFFFFF}%s.',
+                nickname, playerId, CONFIG.QUIT_REASONS[reason] or 'Г­ГҐГЁГ§ГўГҐГ±ГІГ­Г®'
             ),
             State.main_color
         )
@@ -1044,9 +1244,9 @@ function loadPearsLauncherSkins() -- from vAcs
                 end
             end
         end
-        print('[Tools] Загружено ' .. l_s_count .. ' скинов!')
+        print('[Tools] Г‡Г ГЈГ°ГіГ¦ГҐГ­Г® ' .. l_s_count .. ' Г±ГЄГЁГ­Г®Гў!')
     else
-        print('[Tools] Не удалось загрузить скины из лаунчера.', 2, true, false)
+        print('[Tools] ГЌГҐ ГіГ¤Г Г«Г®Г±Гј Г§Г ГЈГ°ГіГ§ГЁГІГј Г±ГЄГЁГ­Г» ГЁГ§ Г«Г ГіГ­Г·ГҐГ°Г .', 2, true, false)
     end
 end
 
@@ -1153,14 +1353,15 @@ function renderLeftPanel()
     imgui.BeginChild("##left", imgui.ImVec2(180, 400), true)
 
     local menuButtons = {
-        { text = u8 'Основное', menu = 1 },
+        { text = u8 'ГЋГ±Г­Г®ГўГ­Г®ГҐ', menu = 1 },
         { text = u8 'Auto Alert', menu = 2 },
         { text = u8 'Auto Find', menu = 3 },
         { text = u8 'Auto Fix (experimental)', menu = 4 },
         { text = u8 'Skin Changer', menu = 5 },
         { text = u8 'SS Tools', menu = 6 },
-        { text = u8 'Спец.Клавиши', menu = 9 },
-        { text = u8 'Настройки', menu = 10 }
+        { text = u8 'ГЃГЁГ­Г¤ГҐГ°', menu = 7 },
+        { text = u8 'Г‘ГЇГҐГ¶.ГЉГ«Г ГўГЁГёГЁ', menu = 9 },
+        { text = u8 'ГЌГ Г±ГІГ°Г®Г©ГЄГЁ', menu = 10 }
     }
 
     for _, button in ipairs(menuButtons) do
@@ -1183,6 +1384,7 @@ function renderRightPanel()
         [4] = menu_4,
         [5] = menu_5,
         [6] = menu_6,
+        [7] = menu_7,
         [9] = menu_9,
         [10] = menu_10
     }
@@ -1196,31 +1398,31 @@ function renderRightPanel()
 end
 
 function menu_1()
-    imgui.CenterText(u8 'Добро пожаловать, ' .. getMyNick())
+    imgui.CenterText(u8 'Г„Г®ГЎГ°Г® ГЇГ®Г¦Г Г«Г®ГўГ ГІГј, ' .. getMyNick())
     imgui.Separator()
     if imadd.ToggleButton("##straboscopes", State.straboscopes) then
         if State.straboscopes.v then
-            sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {01DF01}включены{ffffff}.", State.main_color)
+            sampAddChatMessage("[Tools] {FFFFFF}Г‘ГІГ°Г®ГЎГ®Г±ГЄГ®ГЇГ» {01DF01}ГўГЄГ«ГѕГ·ГҐГ­Г»{ffffff}.", State.main_color)
             mainIni.state.stroboscopes = true
-            inicfg.save(mainIni, 'Tools.ini')
+            save()
         else
-            sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {ff0000}отключены{ffffff}.", State.main_color)
+            sampAddChatMessage("[Tools] {FFFFFF}Г‘ГІГ°Г®ГЎГ®Г±ГЄГ®ГЇГ» {ff0000}Г®ГІГЄГ«ГѕГ·ГҐГ­Г»{ffffff}.", State.main_color)
             mainIni.state.stroboscopes = false
-            inicfg.save(mainIni, 'Tools.ini')
+            save()
         end
     end
     imgui.SameLine()
-    imgui.Text(u8 "Стробоскопы")
+    imgui.Text(u8 "Г‘ГІГ°Г®ГЎГ®Г±ГЄГ®ГЇГ»")
     imgui.SameLine()
-    imgui.HelpMarker(u8 "Активация сирены /strobes | Активация стробоскопов P")
+    imgui.HelpMarker(u8 "ГЂГЄГІГЁГўГ Г¶ГЁГї Г±ГЁГ°ГҐГ­Г» /strobes | ГЂГЄГІГЁГўГ Г¶ГЁГї Г±ГІГ°Г®ГЎГ®Г±ГЄГ®ГЇГ®Гў P")
 
-    if imgui.Button(u8 'Перезагрузить скрипт', ImVec2(490, 0)) then
-        sampAddChatMessage('[Tools] {FFFFFF}Перезагрузка...', State.main_color)
+    if imgui.Button(u8 'ГЏГҐГ°ГҐГ§Г ГЈГ°ГіГ§ГЁГІГј Г±ГЄГ°ГЁГЇГІ', ImVec2(490, 0)) then
+        sampAddChatMessage('[Tools] {FFFFFF}ГЏГҐГ°ГҐГ§Г ГЈГ°ГіГ§ГЄГ ...', State.main_color)
         showCursor(false)
         thisScript():reload()
     end
-    if imgui.Button(u8 'Выключить скрипт', ImVec2(490, 0)) then
-        sampAddChatMessage('[Tools] {FFFFFF}Выключаем скрипт...', State.main_color)
+    if imgui.Button(u8 'Г‚Г»ГЄГ«ГѕГ·ГЁГІГј Г±ГЄГ°ГЁГЇГІ', ImVec2(490, 0)) then
+        sampAddChatMessage('[Tools] {FFFFFF}Г‚Г»ГЄГ«ГѕГ·Г ГҐГ¬ Г±ГЄГ°ГЁГЇГІ...', State.main_color)
         showCursor(false)
         thisScript():unload()
     end
@@ -1228,74 +1430,66 @@ end
 
 function menu_2()
     if imadd.ToggleButton("##auto_alert_state", State.auto_alert_state) then
-        if State.auto_alert_state.v then
-            sampAddChatMessage("[Tools] {FFFFFF}Запрос о поддержке {01DF01}включён{ffffff}.", State.main_color)
-            mainIni.state.auto_alert = true
-            inicfg.save(mainIni, 'Tools.ini')
-        else
-            sampAddChatMessage("[Tools] {FFFFFF}Запрос о поддержке {ff0000}отключён{ffffff}.", State.main_color)
-            mainIni.state.auto_alert = false
-            inicfg.save(mainIni, 'Tools.ini')
-        end
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Г‡Г ГЇГ°Г®Г± Г® ГЇГ®Г¤Г¤ГҐГ°Г¦ГЄГҐ " ..
+            (State.auto_alert_state.v and "{01DF01}ГўГЄГ«ГѕГ·ВёГ­" or "{ff0000}Г®ГІГЄГ«ГѕГ·ВёГ­") .. "{ffffff}.", State.main_color)
+        mainIni.state.auto_alert = State.auto_alert_state.v
+        save()
     end
     imgui.SameLine()
-    imgui.Text(u8 "Запрос о поддержке")
+    imgui.Text(u8 "Г‡Г ГЇГ°Г®Г± Г® ГЇГ®Г¤Г¤ГҐГ°Г¦ГЄГҐ")
     -- backup button
     if imgui.HotKey("##HotKeys.backup", HotKeys.backup) then
         rkeys.changeHotKey(ID_BACKUP, HotKeys.backup.v)
         mainIni.hotkeys.backup = encodeJson(HotKeys.backup.v)
-        inicfg.save(mainIni, 'Tools.ini')
-        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+        save()
+        sampAddChatMessage("[ГЏГ®Г¤Г±ГЄГ Г§ГЄГ ] {FFFFFF}ГЌГ®ГўГ Гї ГЄГ«Г ГўГЁГёГ  Г­Г Г§Г­Г Г·ГҐГ­Г .", State.main_color)
     end
     imgui.SameLine()
-    imgui.Text(u8 'Изменить кнопку запроса поддержки')
+    imgui.Text(u8 'Г€Г§Г¬ГҐГ­ГЁГІГј ГЄГ­Г®ГЇГЄГі Г§Г ГЇГ°Г®Г±Г  ГЇГ®Г¤Г¤ГҐГ°Г¦ГЄГЁ')
     -- su button
     if imgui.HotKey("##HotKeys.su", HotKeys.su) then
         rkeys.changeHotKey(ID_SU, HotKeys.su.v)
         mainIni.hotkeys.su = encodeJson(HotKeys.su.v)
-        inicfg.save(mainIni, 'Tools.ini')
-        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+        save()
+        sampAddChatMessage("[ГЏГ®Г¤Г±ГЄГ Г§ГЄГ ] {FFFFFF}ГЌГ®ГўГ Гї ГЄГ«Г ГўГЁГёГ  Г­Г Г§Г­Г Г·ГҐГ­Г .", State.main_color)
     end
     imgui.SameLine()
-    imgui.Text(u8 'Изменить кнопку выдачи розыска')
+    imgui.Text(u8 'Г€Г§Г¬ГҐГ­ГЁГІГј ГЄГ­Г®ГЇГЄГі ГўГ»Г¤Г Г·ГЁ Г°Г®Г§Г»Г±ГЄГ ')
     -- backup text
-    imgui.Text(u8 'Изменить текст вызова поддержки')
+    imgui.Text(u8 'Г€Г§Г¬ГҐГ­ГЁГІГј ГІГҐГЄГ±ГІ ГўГ»Г§Г®ГўГ  ГЇГ®Г¤Г¤ГҐГ°Г¦ГЄГЁ')
     imgui.SameLine()
-    imgui.HelpMarker(u8 "Используйте #zone для указания района. Например: Требуется подкрепление. Район #zone.")
+    imgui.HelpMarker(u8 "Г€Г±ГЇГ®Г«ГјГ§ГіГ©ГІГҐ #zone Г¤Г«Гї ГіГЄГ Г§Г Г­ГЁГї Г°Г Г©Г®Г­Г . ГЌГ ГЇГ°ГЁГ¬ГҐГ°: Г’Г°ГҐГЎГіГҐГІГ±Гї ГЇГ®Г¤ГЄГ°ГҐГЇГ«ГҐГ­ГЁГҐ. ГђГ Г©Г®Г­ #zone.")
 
-    State.auto_alert_backup_text_buffer.v = mainIni.config.backup_text:gsub("%%s", "#zone")
-    if imgui.InputText(u8 '', State.auto_alert_backup_text_buffer) then
+    State.auto_alert_backup_text_buffer.v = binds['backup_text']:gsub("%%s", "#zone")
+    if imgui.InputText('##auto_alert_backup_text_buffer', State.auto_alert_backup_text_buffer) then
         local backup_text = State.auto_alert_backup_text_buffer.v:gsub("#zone", "%%s")
-        mainIni.config.backup_text = backup_text
-        inicfg.save(mainIni, 'Tools.ini')
+        binds['backup_text'] = backup_text
+        save()
     end
 end
 
 function menu_3()
     if imadd.ToggleButton("##auto_find_state", State.auto_find_state) then
-        if State.auto_find_state.v then
-            sampAddChatMessage("[Tools] {FFFFFF}Автопоиск {01DF01}включён{ffffff}.", State.main_color)
-            mainIni.state.auto_find = true
-            inicfg.save(mainIni, 'Tools.ini')
-        else
-            sampAddChatMessage("[Tools] {FFFFFF}Автопоиск {ff0000}отключён{ffffff}.", State.main_color)
-            mainIni.state.auto_find = false
-            inicfg.save(mainIni, 'Tools.ini')
-        end
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}ГЂГўГІГ®ГЇГ®ГЁГ±ГЄ " ..
+            (State.auto_find_state.v and "{01DF01}ГўГЄГ«ГѕГ·ВёГ­" or "{ff0000}Г®ГІГЄГ«ГѕГ·ВёГ­") .. "{ffffff}.", State.main_color)
+        mainIni.state.auto_find = State.auto_find_state.v
+        save()
     end
     imgui.SameLine()
-    imgui.Text(u8 "Автопоиск")
-    imgui.Text(u8 'Активация: /find [id]')
-    imgui.Text(u8 'Деактивация: /findoff')
-    -- Нужна инфа!!!
+    imgui.Text(u8 "ГЂГўГІГ®ГЇГ®ГЁГ±ГЄ")
+    imgui.Text(u8 'ГЂГЄГІГЁГўГ Г¶ГЁГї: /find [id]')
+    imgui.Text(u8 'Г„ГҐГ ГЄГІГЁГўГ Г¶ГЁГї: /findoff')
+    -- ГЌГіГ¦Г­Г  ГЁГ­ГґГ !!!
     -- imgui.Separator()
-    -- imgui.Text(u8 'Уровень Сыщика')
+    -- imgui.Text(u8 'Г“Г°Г®ГўГҐГ­Гј Г‘Г»Г№ГЁГЄГ ')
     -- imgui.SameLine()
-    -- imgui.HelpMarker(u8 "/skill - Навык Сыщика")
+    -- imgui.HelpMarker(u8 "/skill - ГЌГ ГўГ»ГЄ Г‘Г»Г№ГЁГЄГ ")
     -- for i = 10, 1, -1 do
     --     if imgui.RadioButton(tostring(i), mainIni.config.auto_find_level_selected == i) then
     --         mainIni.config.auto_find_level_selected = i
-    --         inicfg.save(mainIni, 'Tools.ini')
+    --         save()
     --     end
     --     imgui.SameLine()
     -- end
@@ -1303,34 +1497,30 @@ end
 
 function menu_4()
     if imadd.ToggleButton("##auto_fix_state", State.auto_fix_state) then
-        if State.auto_fix_state.v then
-            sampAddChatMessage("[Tools] {FFFFFF}Автопочинка {01DF01}включена{ffffff}.", State.main_color)
-            mainIni.state.auto_fix = true
-            inicfg.save(mainIni, 'Tools.ini')
-        else
-            sampAddChatMessage("[Tools] {FFFFFF}Автопочинка {ff0000}отключена{ffffff}.", State.main_color)
-            mainIni.state.auto_fix = false
-            inicfg.save(mainIni, 'Tools.ini')
-        end
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}ГЂГўГІГ®ГЇГ®Г·ГЁГ­ГЄГ  " ..
+            (State.auto_fix_state.v and "{01DF01}ГўГЄГ«ГѕГ·ГҐГ­Г " or "{ff0000}Г®ГІГЄГ«ГѕГ·ГҐГ­Г ") .. "{ffffff}.", State.main_color)
+        mainIni.state.auto_fix = State.auto_fix_state.v
+        save()
     end
     imgui.SameLine()
-    imgui.Text(u8 "Автопочинка и автозаправка")
+    imgui.Text(u8 "ГЂГўГІГ®ГЇГ®Г·ГЁГ­ГЄГ  ГЁ Г ГўГІГ®Г§Г ГЇГ°Г ГўГЄГ ")
     imgui.SameLine()
-    imgui.HelpMarker(u8 "Автопочинка и автозаправка в гос.гаражах. Для починки нужно заглушить двигатель.")
+    imgui.HelpMarker(u8 "ГЂГўГІГ®ГЇГ®Г·ГЁГ­ГЄГ  ГЁ Г ГўГІГ®Г§Г ГЇГ°Г ГўГЄГ  Гў ГЈГ®Г±.ГЈГ Г°Г Г¦Г Гµ. Г„Г«Гї ГЇГ®Г·ГЁГ­ГЄГЁ Г­ГіГ¦Г­Г® Г§Г ГЈГ«ГіГёГЁГІГј Г¤ГўГЁГЈГ ГІГҐГ«Гј.")
 end
 
 function menu_5()
-    imgui.Text(u8 "Визуальная смена скина")
-    imgui.Text(u8 'Поиск:')
+    imgui.Text(u8 "Г‚ГЁГ§ГіГ Г«ГјГ­Г Гї Г±Г¬ГҐГ­Г  Г±ГЄГЁГ­Г ")
+    imgui.Text(u8 'ГЏГ®ГЁГ±ГЄ:')
     imgui.InputText(u8 '', State.skinSearch)
-    if imgui.Selectable(u8 'Выкл', SkinChanger.selectedSkin == 0) then
+    if imgui.Selectable(u8 'Г‚Г»ГЄГ«', SkinChanger.selectedSkin == 0) then
         SkinChanger.selectedSkin = 0
         apply()
     end
     for i = 1, #skins do
         local text = tostring(skins[i].id) .. ' - ' .. skins[i].name
         if #State.skinSearch.v > 0 and text:lower():lower():find(State.skinSearch.v) or #State.skinSearch.v == 0 then
-            if imgui.Selectable((SkinChanger.selectedSkin == i and u8 '• ' or '') .. text, SkinChanger.selectedSkin == i) then
+            if imgui.Selectable((SkinChanger.selectedSkin == i and u8 'В• ' or '') .. text, SkinChanger.selectedSkin == i) then
                 SkinChanger.selectedSkin = i
                 apply()
                 save()
@@ -1340,9 +1530,131 @@ function menu_5()
 end
 
 function menu_6()
-    imgui.Text(u8 "/ss - только IC чат (удаление ad, админских строк, PayDay, /r, /d, OOC чатов).")
-    imgui.Text(u8 "/сс - очистить чат.")
-    imgui.Text(u8 "/blackout - чёрный экран.")
+    imgui.Text(u8 "/ss - ГІГ®Г«ГјГЄГ® IC Г·Г ГІ (ГіГ¤Г Г«ГҐГ­ГЁГҐ ad, Г Г¤Г¬ГЁГ­Г±ГЄГЁГµ Г±ГІГ°Г®ГЄ, PayDay, /r, /d, OOC Г·Г ГІГ®Гў).")
+    imgui.Text(u8 "/Г±Г± - Г®Г·ГЁГ±ГІГЁГІГј Г·Г ГІ.")
+    imgui.Text(u8 "/blackout - Г·ВёГ°Г­Г»Г© ГЅГЄГ°Г Г­.")
+end
+
+function menu_7()
+    imgui.CenterText(u8 'ГЃГ Г§Г®ГўГ»ГҐ Г®ГІГ»ГЈГ°Г®ГўГЄГЁ')
+    imgui.Separator()
+    if imadd.ToggleButton("##binder", State.binder) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}ГЃГЁГ­Г¤ГҐГ° " ..
+            (State.binder.v and "{01DF01}ГўГЄГ«ГѕГ·ВёГ­" or "{ff0000}Г®ГІГЄГ«ГѕГ·ВёГ­") .. "{ffffff}.", State.main_color)
+        mainIni.state.binder = State.binder.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "ГЃГЁГ­Г¤ГҐГ°")
+    imgui.SameLine()
+    imgui.HelpMarker(u8 "Г‚ГЇГЁГёГЁГІГҐ ГўГ ГёГі Г®ГІГ»ГЈГ°Г®ГўГЄГі ГЁГ«ГЁ Г®Г±ГІГ ГўГјГІГҐ ГЄГ ГЄ ГҐГ±ГІГј, #name Г§Г Г¬ГҐГ­ГїГҐГІГ±Гї Г­Г  ГЁГ¬Гї Г·ГҐГ«Г®ГўГҐГЄГ  id ГЄГ®ГІГ®Г°Г®ГЈГ® ГўГ» ГўГЇГЁГ±Г Г«ГЁ.")
+    if imadd.ToggleButton("##bindcuff", Binder.cuff) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}ГЋГІГ»ГЈГ°Г®ГўГЄГ  Г­Г Г°ГіГ·Г­ГЁГЄГ®Гў " ..
+            (Binder.cuff.v and "{01DF01}ГўГЄГ«ГѕГ·ГҐГ­Г " or "{ff0000}Г®ГІГЄГ«ГѕГ·ГҐГ­Г ") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_cuff = Binder.cuff.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "ГЋГІГ»ГЈГ°Г®ГўГЄГ  Г­Г Г°ГіГ·Г­ГЁГЄГ®Гў")
+    State.binder_cuff_text_buffer.v = binds['cuff_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_cuff_text_buffer', State.binder_cuff_text_buffer) then
+        local text = State.binder_cuff_text_buffer.v:gsub("#name", "%%s")
+        binds['cuff_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindfme", Binder.fme) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}ГЋГІГ»ГЈГ°Г®ГўГЄГ  ГўГҐГ±ГІГЁ Г§Г  Г±Г®ГЎГ®Г© " ..
+            (Binder.fme.v and "{01DF01}ГўГЄГ«ГѕГ·ГҐГ­Г " or "{ff0000}Г®ГІГЄГ«ГѕГ·ГҐГ­Г ") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_fme = Binder.fme.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "ГЋГІГ»ГЈГ°Г®ГўГЄГ  ГўГҐГ±ГІГЁ Г§Г  Г±Г®ГЎГ®Г©")
+    State.binder_fme_text_buffer.v = binds['fme_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_fme_text_buffer', State.binder_fme_text_buffer) then
+        binds['fme_text'] = State.binder_fme_text_buffer.v:gsub("#name", "%%s")
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindfrisk", Binder.frisk) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}ГЋГІГ»ГЈГ°Г®ГўГЄГ  Г®ГЎГ»Г±ГЄГ  " ..
+            (Binder.frisk.v and "{01DF01}ГўГЄГ«ГѕГ·ГҐГ­Г " or "{ff0000}Г®ГІГЄГ«ГѕГ·ГҐГ­Г ") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_frisk = Binder.frisk.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "ГЋГІГ»ГЈГ°Г®ГўГЄГ  Г®ГЎГ»Г±ГЄГ ")
+    State.binder_frisk_text_buffer.v = binds['frisk_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_frisk_text_buffer', State.binder_frisk_text_buffer) then
+        local text = State.binder_frisk_text_buffer.v:gsub("#name", "%%s")
+        binds['frisk_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindincar", Binder.incar) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}ГЋГІГ»ГЈГ°Г®ГўГЄГ  /incar " ..
+            (Binder.incar.v and "{01DF01}ГўГЄГ«ГѕГ·ГҐГ­Г " or "{ff0000}Г®ГІГЄГ«ГѕГ·ГҐГ­Г ") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_incar = Binder.incar.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "ГЋГІГ»ГЈГ°Г®ГўГЄГ  /incar")
+    State.binder_incar_text_buffer.v = binds['incar_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_incar_text_buffer', State.binder_incar_text_buffer) then
+        local text = State.binder_incar_text_buffer.v:gsub("#name", "%%s")
+        binds['incar_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindeject", Binder.eject) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}ГЋГІГ»ГЈГ°Г®ГўГЄГ  /eject " ..
+            (Binder.eject.v and "{01DF01}ГўГЄГ«ГѕГ·ГҐГ­Г " or "{ff0000}Г®ГІГЄГ«ГѕГ·ГҐГ­Г ") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_eject = Binder.eject.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "ГЋГІГ»ГЈГ°Г®ГўГЄГ  /eject")
+    State.binder_eject_text_buffer.v = binds['eject_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_eject_text_buffer', State.binder_eject_text_buffer) then
+        local text = State.binder_eject_text_buffer.v:gsub("#name", "%%s")
+        binds['eject_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindarest", Binder.arest) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}ГЋГІГ»ГЈГ°Г®ГўГЄГ  /arest " ..
+            (Binder.arest.v and "{01DF01}ГўГЄГ«ГѕГ·ГҐГ­Г " or "{ff0000}Г®ГІГЄГ«ГѕГ·ГҐГ­Г ") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_arest = Binder.arest.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "ГЋГІГ»ГЈГ°Г®ГўГЄГ  /arest")
+    State.binder_arest_text_buffer.v = binds['arest_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_arest_text_buffer', State.binder_arest_text_buffer) then
+        local text = State.binder_arest_text_buffer.v:gsub("#name", "%%s")
+        binds['arest_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
 end
 
 function menu_9()
@@ -1350,50 +1662,50 @@ function menu_9()
     if imgui.HotKey("##HotKeys.main_menu", HotKeys.main_menu) then
         rkeys.changeHotKey(ID_MAIN_MENU, HotKeys.main_menu.v)
         mainIni.hotkeys.main_menu = encodeJson(HotKeys.main_menu.v)
-        inicfg.save(mainIni, 'Tools.ini')
-        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+        save()
+        sampAddChatMessage("[ГЏГ®Г¤Г±ГЄГ Г§ГЄГ ] {FFFFFF}ГЌГ®ГўГ Гї ГЄГ«Г ГўГЁГёГ  Г­Г Г§Г­Г Г·ГҐГ­Г .", State.main_color)
     end
     imgui.SameLine()
-    imgui.Text(u8 'Изменить кнопку активации меню')
+    imgui.Text(u8 'Г€Г§Г¬ГҐГ­ГЁГІГј ГЄГ­Г®ГЇГЄГі Г ГЄГІГЁГўГ Г¶ГЁГЁ Г¬ГҐГ­Гѕ')
     -- battlepass
     if imgui.HotKey("##HotKeys.battlepass", HotKeys.battlepass) then
         rkeys.changeHotKey(ID_BATTLEPASS, HotKeys.battlepass.v)
         mainIni.hotkeys.battlepass = encodeJson(HotKeys.battlepass.v)
-        inicfg.save(mainIni, 'Tools.ini')
-        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+        save()
+        sampAddChatMessage("[ГЏГ®Г¤Г±ГЄГ Г§ГЄГ ] {FFFFFF}ГЌГ®ГўГ Гї ГЄГ«Г ГўГЁГёГ  Г­Г Г§Г­Г Г·ГҐГ­Г .", State.main_color)
     end
     imgui.SameLine()
-    imgui.Text(u8 'Изменить кнопку активации Battle Pass')
+    imgui.Text(u8 'Г€Г§Г¬ГҐГ­ГЁГІГј ГЄГ­Г®ГЇГЄГі Г ГЄГІГЁГўГ Г¶ГЁГЁ Battle Pass')
 end
 
 function menu_10()
-    local styles = { u8 "Серая", u8 "Красная", u8 "Фиолетовая", u8 "Чёрная", u8 "Синяя", u8 "Оранжевая", u8 "Розовая" }
-    imgui.Combo(u8 'Стиль интерфейса', elements.int.intImGui, styles)
-    -- imgui.Separator()
+    local styles = { u8 "Г‘ГҐГ°Г Гї", u8 "ГЉГ°Г Г±Г­Г Гї", u8 "Г”ГЁГ®Г«ГҐГІГ®ГўГ Гї", u8 "Г—ВёГ°Г­Г Гї", u8 "Г‘ГЁГ­ГїГї", u8 "ГЋГ°Г Г­Г¦ГҐГўГ Гї", u8 "ГђГ®Г§Г®ГўГ Гї" }
+    imgui.Combo(u8 'Г‘ГІГЁГ«Гј ГЁГ­ГІГҐГ°ГґГҐГ©Г±Г ', elements.int.intImGui, styles)
+    imgui.Separator()
     -- if imadd.ToggleButton("##idDialog", State.CheckBoxDialogID) then
     --     if State.CheckBoxDialogID.v then
-    --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {01DF01}включён{ffffff}.", State.main_color)
+    --         sampAddChatMessage("[ГЏГ®Г¤Г±ГЄГ Г§ГЄГ ] {FFFFFF}Dialog ID {01DF01}ГўГЄГ«ГѕГ·ВёГ­{ffffff}.", State.main_color)
     --     else
-    --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {ff0000}отключён{ffffff}.", State.main_color)
+    --         sampAddChatMessage("[ГЏГ®Г¤Г±ГЄГ Г§ГЄГ ] {FFFFFF}Dialog ID {ff0000}Г®ГІГЄГ«ГѕГ·ВёГ­{ffffff}.", State.main_color)
     --     end
     -- end
     -- imgui.SameLine()
-    -- imgui.TextColoredRGB('[Выкл/Вкл]  {FF0000}Dialog ID')
-    -- imgui.SameLine()
+    -- imgui.TextColoredRGB('[Г‚Г»ГЄГ«/Г‚ГЄГ«]  {FF0000}Dialog ID')
 end
 
 function renderLeftPanel()
     imgui.BeginChild("##left", imgui.ImVec2(180, 400), true)
 
     local menuButtons = {
-        { text = u8 'Основное', menu = 1 },
+        { text = u8 'ГЋГ±Г­Г®ГўГ­Г®ГҐ', menu = 1 },
         { text = u8 'Auto Alert', menu = 2 },
         { text = u8 'Auto Find', menu = 3 },
         { text = u8 'Auto Fix (experimental)', menu = 4 },
         { text = u8 'Skin Changer', menu = 5 },
         { text = u8 'SS Tools', menu = 6 },
-        { text = u8 'Спец.Клавиши', menu = 9 },
-        { text = u8 'Настройки', menu = 10 }
+        { text = u8 'ГЃГЁГ­Г¤ГҐГ°', menu = 7 },
+        { text = u8 'Г‘ГЇГҐГ¶.ГЉГ«Г ГўГЁГёГЁ', menu = 9 },
+        { text = u8 'ГЌГ Г±ГІГ°Г®Г©ГЄГЁ', menu = 10 }
     }
 
     for _, button in ipairs(menuButtons) do
@@ -2286,5 +2598,5 @@ function calculateZone(x, y, z)
             return v[1]
         end
     end
-    return 'неизвестен'
+    return 'Г­ГҐГЁГ§ГўГҐГ±ГІГҐГ­'
 end
