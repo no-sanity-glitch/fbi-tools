@@ -1267,9 +1267,8 @@ function bind_cuff(param)
 
     if State.binder.v and Binder.cuff.v then
         lua_thread.create(function()
-            sampSendChat(formatWithName(u8:decode(binds['cuff_text']), id))
-            wait(500)
-            sampSendChat('/cuff ' .. id)
+            local message = formatWithName(u8:decode(binds['cuff_text']), id)
+            handleBinderCommand(message, '/cuff')
         end)
     else
         sampSendChat('/cuff ' .. id)
@@ -1285,9 +1284,8 @@ function bind_follow_me(param)
 
     if State.binder.v and Binder.fme.v then
         lua_thread.create(function()
-            sampSendChat(formatWithName(u8:decode(binds['fme_text']), id))
-            wait(500)
-            sampSendChat('/fme ' .. id)
+            local message = formatWithName(u8:decode(binds['fme_text']), id)
+            handle_binder_cmd(message, '/fme')
         end)
     else
         sampSendChat('/fme ' .. id)
@@ -1303,9 +1301,8 @@ function bind_frisk(param)
 
     if State.binder.v and Binder.frisk.v then
         lua_thread.create(function()
-            sampSendChat(formatWithName(binds['frisk_text'], id))
-            wait(500)
-            sampSendChat('/frisk ' .. id)
+            local message = formatWithName(binds['frisk_text'], id)
+            handle_binder_cmd(message, '/frisk')
         end)
     else
         sampSendChat('/frisk ' .. id)
@@ -1321,9 +1318,8 @@ function bind_incar(param)
 
     if State.binder.v and Binder.incar.v then
         lua_thread.create(function()
-            sampSendChat(formatWithName(binds['incar_text'], id))
-            wait(500)
-            sampSendChat('/incar ' .. id)
+            local message = formatWithName(binds['incar_text'], id)
+            handle_binder_cmd(message, '/incar')
         end)
     else
         sampSendChat('/incar ' .. id)
@@ -1339,9 +1335,8 @@ function bind_eject(param)
 
     if State.binder.v and Binder.eject.v then
         lua_thread.create(function()
-            sampSendChat(formatWithName(binds['eject_text'], id))
-            wait(500)
-            sampSendChat('/eject ' .. id)
+            local message = formatWithName(binds['eject_text'], id)
+            handle_binder_cmd(message, '/eject')
         end)
     else
         sampSendChat('/eject ' .. id)
@@ -1357,9 +1352,8 @@ function bind_arest(param)
 
     if State.binder.v and Binder.arest.v then
         lua_thread.create(function()
-            sampSendChat(formatWithName(binds['arest_text'], id))
-            wait(500)
-            sampSendChat('/arest ' .. id)
+            local message = formatWithName(binds['arest_text'], id)
+            handle_binder_cmd(message, '/arest')
         end)
     else
         sampSendChat('/arest ' .. id)
@@ -1368,9 +1362,20 @@ end
 
 function formatWithName(msg, arg)
     local id = tonumber(arg)
+    if not sampIsPlayerConnected(id) then return nil end
     local nickname = sampGetPlayerNickname(id)
     local name = nickname:match("([^_]+)")
     return (msg):format(name)
+end
+
+function handle_binder_cmd(msg, cmd)
+    if msg then
+        sampSendChat(msg)
+        wait(500)
+        sampSendChat(cmd .. id)
+    else
+        sampAddChatMessage("[Tools] {FFFFFF}Игрок не подключён.", State.main_color)
+    end
 end
 
 function imgui.OnDrawFrame()
@@ -1640,7 +1645,7 @@ function menu_7()
         save()
     end
     imgui.SameLine()
-    imgui.Text(u8 "Отыгровка наручников")
+    imgui.Text(u8 "Отыгровка наручников. /cuff")
     State.binder_cuff_text_buffer.v = binds['cuff_text']:gsub("%%s", "#name")
     imgui.PushItemWidth(-1)
     if imgui.InputText('##binder_cuff_text_buffer', State.binder_cuff_text_buffer) then
@@ -1658,7 +1663,7 @@ function menu_7()
         save()
     end
     imgui.SameLine()
-    imgui.Text(u8 "Отыгровка вести за собой")
+    imgui.Text(u8 "Отыгровка вести за собой. /fme")
     State.binder_fme_text_buffer.v = binds['fme_text']:gsub("%%s", "#name")
     imgui.PushItemWidth(-1)
     if imgui.InputText('##binder_fme_text_buffer', State.binder_fme_text_buffer) then
@@ -1675,7 +1680,7 @@ function menu_7()
         save()
     end
     imgui.SameLine()
-    imgui.Text(u8 "Отыгровка обыска")
+    imgui.Text(u8 "Отыгровка обыска. /frisk")
     State.binder_frisk_text_buffer.v = binds['frisk_text']:gsub("%%s", "#name")
     imgui.PushItemWidth(-1)
     if imgui.InputText('##binder_frisk_text_buffer', State.binder_frisk_text_buffer) then
