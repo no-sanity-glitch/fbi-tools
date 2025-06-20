@@ -73,6 +73,7 @@ local mainIni = inicfg.load({
         intImGui = 0,
         backup_text = "Требуется подкрепление. Район %s.",
         auto_find_level_selected = 10,
+        skin = 0
     },
     admin = {
         nameTitle = false,
@@ -103,7 +104,8 @@ local State = {
     blackout = false,
     blackout_textdraw_id = nil,
     statusSsMode = false,
-    main_color = mainIni.config.intImGui
+    main_color = mainIni.config.intImGui,
+    skinSearch = imgui.ImBuffer(256)
 }
 
 local AutoAlert = {
@@ -128,6 +130,10 @@ local AutoFix = {
     isFilling = false
 }
 
+local SkinChanger = {
+    selectedSkin = mainIni.config.skin
+}
+
 local elements = {
     checkbox = {},
     static = { nameStatis = imgui.ImBool(mainIni.admin.nameTitle) },
@@ -139,6 +145,319 @@ local HotKeys = {
     battlepass = { v = decodeJson(mainIni.hotkeys.battlepass) },
     backup = { v = decodeJson(mainIni.hotkeys.backup) },
     su = { v = decodeJson(mainIni.hotkeys.su) }
+}
+
+local pearsSkins = {}
+
+local skins = {
+    { id = 1,   name = 'The Truth' },
+    { id = 2,   name = 'Maccer' },
+    { id = 3,   name = 'Andre' },
+    { id = 4,   name = 'Barry "Big Bear" Thorne [Thin]' },
+    { id = 5,   name = 'Barry "Big Bear" Thorne [Big]' },
+    { id = 6,   name = 'Emmet' },
+    { id = 7,   name = 'Taxi Driver/Train Driver' },
+    { id = 8,   name = 'Janitor' },
+    { id = 9,   name = 'Normal Ped' },
+    { id = 10,  name = 'Old Woman' },
+    { id = 11,  name = 'Casino croupier' },
+    { id = 12,  name = 'Rich Woman' },
+    { id = 13,  name = 'Street Girl' },
+    { id = 14,  name = 'Normal Ped' },
+    { id = 15,  name = 'Mr.Whittaker (RS Haul Owner)' },
+    { id = 16,  name = 'Airport Ground Worker' },
+    { id = 17,  name = 'Businessman' },
+    { id = 18,  name = 'Beach Visitor' },
+    { id = 19,  name = 'DJ' },
+    { id = 20,  name = 'Rich Guy (Madd Dogg\'s Manager)' },
+    { id = 21,  name = 'Normal Ped' },
+    { id = 22,  name = 'Normal Ped' },
+    { id = 23,  name = 'BMXer' },
+    { id = 24,  name = 'Madd Dogg Bodyguard' },
+    { id = 25,  name = 'Madd Dogg Bodyguard' },
+    { id = 26,  name = 'Backpacker' },
+    { id = 27,  name = 'Construction Worker' },
+    { id = 28,  name = 'Drug Dealer' },
+    { id = 29,  name = 'Drug Dealer' },
+    { id = 30,  name = 'Drug Dealer' },
+    { id = 31,  name = 'Farm-Town inhabitant' },
+    { id = 32,  name = 'Farm-Town inhabitant' },
+    { id = 33,  name = 'Farm-Town inhabitant' },
+    { id = 34,  name = 'Farm-Town inhabitant' },
+    { id = 35,  name = 'Gardener' },
+    { id = 36,  name = 'Golfer' },
+    { id = 37,  name = 'Golfer' },
+    { id = 38,  name = 'Normal Ped' },
+    { id = 39,  name = 'Normal Ped' },
+    { id = 40,  name = 'Normal Ped' },
+    { id = 41,  name = 'Normal Ped' },
+    { id = 42,  name = 'Jethro' },
+    { id = 43,  name = 'Normal Ped' },
+    { id = 44,  name = 'Normal Ped' },
+    { id = 45,  name = 'Beach Visitor' },
+    { id = 46,  name = 'Normal Ped' },
+    { id = 47,  name = 'Normal Ped' },
+    { id = 48,  name = 'Normal Ped' },
+    { id = 49,  name = 'Snakehead (Da Nang)' },
+    { id = 50,  name = 'Mechanic' },
+    { id = 51,  name = 'Mountain Biker' },
+    { id = 52,  name = 'Mountain Biker' },
+    { id = 53,  name = 'Unknown' },
+    { id = 54,  name = 'Normal Ped' },
+    { id = 55,  name = 'Normal Ped' },
+    { id = 56,  name = 'Normal Ped' },
+    { id = 57,  name = 'Oriental Ped' },
+    { id = 58,  name = 'Oriental Ped' },
+    { id = 59,  name = 'Normal Ped' },
+    { id = 60,  name = 'Normal Ped' },
+    { id = 61,  name = 'Pilot' },
+    { id = 62,  name = 'Colonel Fuhrberger' },
+    { id = 63,  name = 'Prostitute' },
+    { id = 64,  name = 'Prostitute' },
+    { id = 65,  name = 'Kendl Johnson' },
+    { id = 66,  name = 'Pool Player' },
+    { id = 67,  name = 'Pool Player' },
+    { id = 68,  name = 'Priest/Preacher' },
+    { id = 69,  name = 'Normal Ped' },
+    { id = 70,  name = 'Scientist' },
+    { id = 71,  name = 'Security Guard' },
+    { id = 72,  name = 'Hippy' },
+    { id = 73,  name = 'Hippy' },
+    { id = 75,  name = 'Prostitute' },
+    { id = 76,  name = 'Stewardess' },
+    { id = 77,  name = 'Homeless' },
+    { id = 78,  name = 'Homeless' },
+    { id = 79,  name = 'Homeless' },
+    { id = 80,  name = 'Boxer' },
+    { id = 81,  name = 'Boxer' },
+    { id = 82,  name = 'Black Elvis' },
+    { id = 83,  name = 'White Elvis' },
+    { id = 84,  name = 'Blue Elvis' },
+    { id = 85,  name = 'Prostitute' },
+    { id = 86,  name = 'Ryder with robbery mask' },
+    { id = 87,  name = 'Stripper' },
+    { id = 88,  name = 'Normal Ped' },
+    { id = 89,  name = 'Normal Ped' },
+    { id = 90,  name = 'Jogger' },
+    { id = 91,  name = 'Rich Woman' },
+    { id = 93,  name = 'Normal Ped' },
+    { id = 94,  name = 'Normal Ped' },
+    { id = 95,  name = 'Normal Ped, Works at or owns Dillimore Gas Station' },
+    { id = 96,  name = 'Jogger' },
+    { id = 97,  name = 'Lifeguard' },
+    { id = 98,  name = 'Normal Ped' },
+    { id = 100, name = 'Biker' },
+    { id = 101, name = 'Normal Ped' },
+    { id = 102, name = 'Balla' },
+    { id = 103, name = 'Balla' },
+    { id = 104, name = 'Balla' },
+    { id = 105, name = 'Grove Street Families' },
+    { id = 106, name = 'Grove Street Families' },
+    { id = 107, name = 'Grove Street Families' },
+    { id = 108, name = 'Los Santos Vagos' },
+    { id = 109, name = 'Los Santos Vagos' },
+    { id = 110, name = 'Los Santos Vagos' },
+    { id = 111, name = 'The Russian Mafia' },
+    { id = 112, name = 'The Russian Mafia' },
+    { id = 113, name = 'The Russian Mafia' },
+    { id = 114, name = 'Varios Los Aztecas' },
+    { id = 115, name = 'Varios Los Aztecas' },
+    { id = 116, name = 'Varios Los Aztecas' },
+    { id = 117, name = 'Triad' },
+    { id = 118, name = 'Triad' },
+    { id = 119, name = 'Johhny Sindacco' },
+    { id = 120, name = 'Triad Boss' },
+    { id = 121, name = 'Da Nang Boy' },
+    { id = 122, name = 'Da Nang Boy' },
+    { id = 123, name = 'Da Nang Boy' },
+    { id = 124, name = 'The Mafia' },
+    { id = 125, name = 'The Mafia' },
+    { id = 126, name = 'The Mafia' },
+    { id = 127, name = 'The Mafia' },
+    { id = 128, name = 'Farm Inhabitant' },
+    { id = 129, name = 'Farm Inhabitant' },
+    { id = 130, name = 'Farm Inhabitant' },
+    { id = 131, name = 'Farm Inhabitant' },
+    { id = 132, name = 'Farm Inhabitant' },
+    { id = 133, name = 'Farm Inhabitant' },
+    { id = 134, name = 'Homeless' },
+    { id = 135, name = 'Homeless' },
+    { id = 136, name = 'Normal Ped' },
+    { id = 137, name = 'Homeless' },
+    { id = 138, name = 'Beach Visitor' },
+    { id = 139, name = 'Beach Visitor' },
+    { id = 140, name = 'Beach Visitor' },
+    { id = 141, name = 'Businesswoman' },
+    { id = 142, name = 'Taxi Driver' },
+    { id = 143, name = 'Crack Maker' },
+    { id = 144, name = 'Crack Maker' },
+    { id = 145, name = 'Crack Maker' },
+    { id = 146, name = 'Crack Maker' },
+    { id = 147, name = 'Businessman' },
+    { id = 148, name = 'Businesswoman' },
+    { id = 149, name = 'Big Smoke Armored' },
+    { id = 150, name = 'Businesswoman' },
+    { id = 151, name = 'Normal Ped' },
+    { id = 152, name = 'Prostitute' },
+    { id = 153, name = 'Construction Worker' },
+    { id = 154, name = 'Beach Visitor' },
+    { id = 155, name = 'Well Stacked Pizza Worker' },
+    { id = 156, name = 'Barber' },
+    { id = 157, name = 'Hillbilly' },
+    { id = 158, name = 'Farmer' },
+    { id = 159, name = 'Hillbilly' },
+    { id = 160, name = 'Hillbilly' },
+    { id = 161, name = 'Farmer' },
+    { id = 162, name = 'Hillbilly' },
+    { id = 163, name = 'Black Bouncer' },
+    { id = 164, name = 'White Bouncer' },
+    { id = 165, name = 'White MIB agent' },
+    { id = 166, name = 'Black MIB agent' },
+    { id = 167, name = 'Cluckin\' Bell Worker' },
+    { id = 168, name = 'Hotdog/Chilli Dog Vendor' },
+    { id = 169, name = 'Normal Ped' },
+    { id = 170, name = 'Normal Ped' },
+    { id = 171, name = 'Blackjack Dealer' },
+    { id = 172, name = 'Casino croupier' },
+    { id = 173, name = 'San Fierro Rifa' },
+    { id = 174, name = 'San Fierro Rifa' },
+    { id = 175, name = 'San Fierro Rifa' },
+    { id = 176, name = 'Barber' },
+    { id = 177, name = 'Barber' },
+    { id = 178, name = 'Whore' },
+    { id = 179, name = 'Ammunation Salesman' },
+    { id = 180, name = 'Tattoo Artist' },
+    { id = 181, name = 'Punk' },
+    { id = 182, name = 'Cab Driver' },
+    { id = 183, name = 'Normal Ped' },
+    { id = 184, name = 'Normal Ped' },
+    { id = 185, name = 'Normal Ped' },
+    { id = 186, name = 'Normal Ped' },
+    { id = 187, name = 'Businessman' },
+    { id = 188, name = 'Normal Ped' },
+    { id = 189, name = 'Valet' },
+    { id = 190, name = 'Barbara Schternvart' },
+    { id = 191, name = 'Helena Wankstein' },
+    { id = 192, name = 'Michelle Cannes' },
+    { id = 193, name = 'Katie Zhan' },
+    { id = 194, name = 'Millie Perkins' },
+    { id = 195, name = 'Denise Robinson' },
+    { id = 196, name = 'Farm-Town inhabitant' },
+    { id = 197, name = 'Hillbilly' },
+    { id = 198, name = 'Farm-Town inhabitant' },
+    { id = 199, name = 'Farm-Town inhabitant' },
+    { id = 200, name = 'Hillbilly' },
+    { id = 201, name = 'Farmer' },
+    { id = 202, name = 'Farmer' },
+    { id = 203, name = 'Karate Teacher' },
+    { id = 204, name = 'Karate Teacher' },
+    { id = 205, name = 'Burger Shot Cashier' },
+    { id = 206, name = 'Cab Driver' },
+    { id = 207, name = 'Prostitute' },
+    { id = 208, name = 'Su Xi Mu (Suzie)' },
+    { id = 209, name = 'Oriental Noodle stand vendor' },
+    { id = 210, name = 'Oriental Boating School Instructor' },
+    { id = 211, name = 'Clothes shop staff' },
+    { id = 212, name = 'Homeless' },
+    { id = 213, name = 'Weird old man' },
+    { id = 214, name = 'Waitress (Maria Latore)' },
+    { id = 215, name = 'Normal Ped' },
+    { id = 216, name = 'Normal Ped' },
+    { id = 217, name = 'Clothes shop staff' },
+    { id = 218, name = 'Normal Ped' },
+    { id = 219, name = 'Rich Woman' },
+    { id = 220, name = 'Cab Driver' },
+    { id = 221, name = 'Normal Ped' },
+    { id = 222, name = 'Normal Ped' },
+    { id = 223, name = 'Normal Ped' },
+    { id = 224, name = 'Normal Ped' },
+    { id = 225, name = 'Normal Ped' },
+    { id = 226, name = 'Normal Ped' },
+    { id = 227, name = 'Oriental Businessman' },
+    { id = 228, name = 'Oriental Ped' },
+    { id = 229, name = 'Oriental Ped' },
+    { id = 230, name = 'Homeless' },
+    { id = 231, name = 'Normal Ped' },
+    { id = 232, name = 'Normal Ped' },
+    { id = 233, name = 'Normal Ped' },
+    { id = 234, name = 'Cab Driver' },
+    { id = 235, name = 'Normal Ped' },
+    { id = 236, name = 'Normal Ped' },
+    { id = 237, name = 'Prostitute' },
+    { id = 238, name = 'Prostitute' },
+    { id = 239, name = 'Homeless' },
+    { id = 240, name = 'The D.A' },
+    { id = 241, name = 'Afro-American' },
+    { id = 242, name = 'Mexican' },
+    { id = 243, name = 'Prostitute' },
+    { id = 244, name = 'Stripper' },
+    { id = 245, name = 'Prostitute' },
+    { id = 246, name = 'Stripper' },
+    { id = 247, name = 'Biker' },
+    { id = 248, name = 'Biker' },
+    { id = 249, name = 'Pimp' },
+    { id = 250, name = 'Normal Ped' },
+    { id = 251, name = 'Lifeguard' },
+    { id = 252, name = 'Naked Valet' },
+    { id = 253, name = 'Bus Driver' },
+    { id = 254, name = 'Biker Drug Dealer' },
+    { id = 255, name = 'Chauffeur (Limo Driver)' },
+    { id = 256, name = 'Stripper' },
+    { id = 257, name = 'Stripper' },
+    { id = 258, name = 'Heckler' },
+    { id = 259, name = 'Heckler' },
+    { id = 260, name = 'Construction Worker' },
+    { id = 261, name = 'Cab driver' },
+    { id = 262, name = 'Cab driver' },
+    { id = 263, name = 'Normal Ped' },
+    { id = 264, name = 'Clown (Ice-cream Van Driver)' },
+    { id = 265, name = 'Officer Frank Tenpenny (Corrupt Cop)' },
+    { id = 266, name = 'Officer Eddie Pulaski (Corrupt Cop)' },
+    { id = 267, name = 'Officer Jimmy Hernandez' },
+    { id = 268, name = 'Dwaine/Dwayne' },
+    { id = 269, name = 'Melvin "Big Smoke" Harris (Mission)' },
+    { id = 270, name = 'Sean \'Sweet\' Johnson' },
+    { id = 271, name = 'Lance \'Ryder\' Wilson' },
+    { id = 272, name = 'Mafia Boss' },
+    { id = 273, name = 'T-Bone Mendez' },
+    { id = 274, name = 'Paramedic (Emergency Medical Technician)' },
+    { id = 275, name = 'Paramedic (Emergency Medical Technician)' },
+    { id = 276, name = 'Paramedic (Emergency Medical Technician)' },
+    { id = 277, name = 'Firefighter' },
+    { id = 278, name = 'Firefighter' },
+    { id = 279, name = 'Firefighter' },
+    { id = 280, name = 'Los Santos Police Officer' },
+    { id = 281, name = 'San Fierro Police Officer' },
+    { id = 282, name = 'Las Venturas Police Officer' },
+    { id = 283, name = 'County Sheriff' },
+    { id = 284, name = 'LSPD Motorbike Cop' },
+    { id = 285, name = 'S.W.A.T Special Forces' },
+    { id = 286, name = 'Federal Agent' },
+    { id = 287, name = 'San Andreas Army' },
+    { id = 288, name = 'Desert Sheriff' },
+    { id = 289, name = 'Zero' },
+    { id = 290, name = 'Ken Rosenberg' },
+    { id = 291, name = 'Kent Paul' },
+    { id = 292, name = 'Cesar Vialpando' },
+    { id = 293, name = 'Jeffery "OG Loc" Martin/Cross' },
+    { id = 294, name = 'Wu Zi Mu (Woozie)' },
+    { id = 295, name = 'Michael Toreno' },
+    { id = 296, name = 'Jizzy B.' },
+    { id = 297, name = 'Madd Dogg' },
+    { id = 298, name = 'Catalina' },
+    { id = 299, name = 'Claude Speed' },
+    { id = 300, name = 'Los Santos Police Officer (Without gun holster)' },
+    { id = 301, name = 'San Fierro Police Officer (Without gun holster)' },
+    { id = 302, name = 'Las Venturas Police Officer (Without gun holster)' },
+    { id = 303, name = 'Los Santos Police Officer (Without uniform)' },
+    { id = 304, name = 'Los Santos Police Officer (Without uniform)' },
+    { id = 305, name = 'Las Venturas Police Officer (Without uniform)' },
+    { id = 306, name = 'Los Santos Police Officer' },
+    { id = 307, name = 'San Fierro Police Officer' },
+    { id = 308, name = 'San Fierro Paramedic (Emergency Medical Technician)' },
+    { id = 309, name = 'Las Venturas Police Officer' },
+    { id = 310, name = 'Country Sheriff (Without hat)' },
+    { id = 311, name = 'Desert Sheriff (Without hat)' },
 }
 
 -- Mutex lock
@@ -170,51 +489,14 @@ function save()
     inicfg.save(mainIni, 'Tools.ini')
 end
 
--- Stroboscopes
-
-local carsStoroscopes = {}
-function table.contains(data, func)
-    for k, v in pairs(data) do
-        if func(k, v) then return true end
-    end
-    return false
-end
-
-function table.containsValue(data, value)
-    return table.contains(data, function(k, v)
-        if v == value then return true end
-        return false
-    end)
-end
-
-function table.getValueKey(data, value)
-    for k, v in pairs(data) do
-        if v == value then return k end
-    end
-    return nil
-end
-
-function stroboscopes(adress, ptr, _1, _2, _3, _4) -- функция стробоскопов
-    if not isCharInAnyCar(PLAYER_PED) then return end
-
-    if not isCarSirenOn(storeCarCharIsInNoSave(PLAYER_PED)) then
-        forceCarLights(storeCarCharIsInNoSave(PLAYER_PED), 0)
-        callMethod(7086336, ptr, 2, 0, 1, 3)
-        callMethod(7086336, ptr, 2, 0, 0, 0)
-        callMethod(7086336, ptr, 2, 0, 1, 0)
-        markCarAsNoLongerNeeded(storeCarCharIsInNoSave(PLAYER_PED))
-        return
-    end
-
-    callMethod(adress, ptr, _1, _2, _3, _4)
-end
-
 function main()
     while not isSampAvailable() do wait(100) end
     if autoupdate_loaded and enable_autoupdate and Update then
         pcall(Update.check, Update.json_url, Update.prefix, Update.url)
     end
 
+    loadPearsLauncherSkins()
+    concatSkins()
     registerChatCommands()
     registerHotkeys()
     initializeMainThread()
@@ -242,20 +524,6 @@ function registerChatCommands()
     sampRegisterChatCommand('cc', function()
         for i = 1, 30 do sampAddChatMessage('', -1) end
     end)
-
-    sampRegisterChatCommand("strobes", function()
-        if State.straboscopes.v then
-            if isCharInAnyCar(PLAYER_PED) then
-                local car = storeCarCharIsInNoSave(PLAYER_PED)
-                local driverPed = getDriverOfCar(car)
-
-                if PLAYER_PED == driverPed then
-                    local state = not isCarSirenOn(car)
-                    switchCarSiren(car, state)
-                end
-            end
-        end
-    end)
 end
 
 function registerHotkeys()
@@ -269,7 +537,7 @@ function initializeMainThread()
     lua_thread.create(function()
         while true do
             imgui.Process = State.main_window.v
-            handleStroboscopes()
+            handleSkinChanger()
             handleAutoFix()
             wait(0)
         end
@@ -304,45 +572,6 @@ function handleAutoFix()
                         if not isCarEngineOn(car) then
                             sampSendChat("/tehveh")
                         end
-                    end
-                end
-            end
-        end
-    end
-end
-
-function handleStroboscopes()
-    if not State.straboscopes.v then return end
-    if wasKeyPressed(VK_P) and not sampIsChatInputActive() and not sampIsDialogActive() then
-        if isCharInAnyCar(PLAYER_PED) and
-            not isCharInAnyBoat(PLAYER_PED) and
-            not isCharInAnyHeli(PLAYER_PED) and
-            not isCharInAnyPlane(PLAYER_PED) and
-            not isCharOnAnyBike(PLAYER_PED) and
-            not isCharInAnyTrain(PLAYER_PED) then
-            local carHandle = storeCarCharIsInNoSave(PLAYER_PED)
-            if getDriverOfCar(carHandle) == PLAYER_PED then
-                local res, id = sampGetVehicleIdByCarHandle(carHandle)
-                if res then
-                    local structure = getCarPointer(carHandle)
-                    structure = structure + 1440
-                    if carsStoroscopes[id] ~= nil then
-                        carsStoroscopes[id]:terminate()
-                        carsStoroscopes[id] = nil
-                        callMethod(7086336, structure, 2, 0, 0, 0)
-                        callMethod(7086336, structure, 2, 0, 1, 0)
-                    else
-                        carsStoroscopes[id] = lua_thread.create_suspended(function()
-                            while true do
-                                callMethod(7086336, structure, 2, 0, 1, 0)
-                                callMethod(7086336, structure, 2, 0, 0, 1)
-                                wait(100)
-                                callMethod(7086336, structure, 2, 0, 0, 0)
-                                callMethod(7086336, structure, 2, 0, 1, 1)
-                                wait(100)
-                            end
-                        end)
-                        carsStoroscopes[id]:run()
                     end
                 end
             end
@@ -776,6 +1005,92 @@ function sampev.onRemove3DTextLabel(id)
     AutoFix.tehvehTexts[id] = nil
 end
 
+-- SkinChanger
+function handleSkinChanger()
+    if SkinChanger.selectedSkin ~= 0 then
+        if skins[SkinChanger.selectedSkin].id ~= getCharModel(PLAYER_PED) then
+            apply()
+        end
+    end
+end
+
+function loadPearsLauncherSkins() -- from vAcs
+    local file = getGameDirectory() .. '\\data\\peds.ide'
+    if doesFileExist(file) then
+        pearsSkins = {}
+        local F = io.open(file, r)
+        local Text = F:read('*all')
+        F:close()
+
+        local pedline   = 0
+        local lineIndex = 0
+        local l_s_count = 0
+        for line in Text:gmatch('[^\n]+') do
+            lineIndex = lineIndex + 1
+            if line:find('^peds') then
+                pedline = lineIndex
+            end
+            if pedline ~= 0 and lineIndex > pedline then
+                if line:find('(%d+), (%w+)') then
+                    local id, model = line:match('(%d+), (%w+)')
+                    if tonumber(id) then
+                        local model = model .. ' (' .. id .. ')'
+                        if tonumber(id) > 311 then
+                            table.insert(pearsSkins,
+                                { id = tonumber(id) or 0, name = '(Pears Project) ' .. tostring(model) or 'unknown' })
+                            l_s_count = l_s_count + 1
+                        end
+                    end
+                end
+            end
+        end
+        print('[Tools] Загружено ' .. l_s_count .. ' скинов!')
+    else
+        print('[Tools] Не удалось загрузить скины из лаунчера.', 2, true, false)
+    end
+end
+
+function concatSkins()
+    if isPearsLauncher() then
+        for i = 1, #pearsSkins do
+            table.insert(skins, pearsSkins[i])
+        end
+    end
+end
+
+function isPearsLauncher()
+    return doesFileExist(getGameDirectory() .. '\\!pears_sentry.asi')
+end
+
+function isPearsSkin(id)
+    return id > 311 or id < 0
+end
+
+function saveSkin()
+    mainIni.config.skin = SkinChanger.selectedSkin
+    inicfg.save(mainIni, 'Tools.ini')
+end
+
+function apply()
+    saveSkin()
+    if SkinChanger.selectedSkin ~= 0 then
+        bs = raknetNewBitStream()
+        raknetBitStreamWriteInt32(bs, select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)))
+        raknetBitStreamWriteInt32(bs, skins[SkinChanger.selectedSkin].id)
+        raknetEmulRpcReceiveBitStream(153, bs)
+        raknetDeleteBitStream(bs)
+    end
+end
+
+function setPlayerSkin(player, skin)
+    saveSkin()
+    bs = raknetNewBitStream()
+    raknetBitStreamWriteInt32(bs, player)
+    raknetBitStreamWriteInt32(bs, skin)
+    raknetEmulRpcReceiveBitStream(153, bs)
+    raknetDeleteBitStream(bs)
+end
+
 function imgui.OnDrawFrame()
     setColorScheme()
     if State.main_window.v then renderMainWindow() end
@@ -842,7 +1157,8 @@ function renderLeftPanel()
         { text = u8 'Auto Alert', menu = 2 },
         { text = u8 'Auto Find', menu = 3 },
         { text = u8 'Auto Fix (experimental)', menu = 4 },
-        { text = u8 'SS Tools', menu = 5 },
+        { text = u8 'Skin Changer', menu = 5 },
+        { text = u8 'SS Tools', menu = 6 },
         { text = u8 'Спец.Клавиши', menu = 9 },
         { text = u8 'Настройки', menu = 10 }
     }
@@ -866,6 +1182,7 @@ function renderRightPanel()
         [3] = menu_3,
         [4] = menu_4,
         [5] = menu_5,
+        [6] = menu_6,
         [9] = menu_9,
         [10] = menu_10
     }
@@ -1003,6 +1320,26 @@ function menu_4()
 end
 
 function menu_5()
+    imgui.Text(u8 "Визуальная смена скина")
+    imgui.Text(u8 'Поиск:')
+    imgui.InputText(u8 '', State.skinSearch)
+    if imgui.Selectable(u8 'Выкл', SkinChanger.selectedSkin == 0) then
+        SkinChanger.selectedSkin = 0
+        apply()
+    end
+    for i = 1, #skins do
+        local text = tostring(skins[i].id) .. ' - ' .. skins[i].name
+        if #State.skinSearch.v > 0 and text:lower():lower():find(State.skinSearch.v) or #State.skinSearch.v == 0 then
+            if imgui.Selectable((SkinChanger.selectedSkin == i and u8 '• ' or '') .. text, SkinChanger.selectedSkin == i) then
+                SkinChanger.selectedSkin = i
+                apply()
+                save()
+            end
+        end
+    end
+end
+
+function menu_6()
     imgui.Text(u8 "/ss - только IC чат (удаление ad, админских строк, PayDay, /r, /d, OOC чатов).")
     imgui.Text(u8 "/сс - очистить чат.")
     imgui.Text(u8 "/blackout - чёрный экран.")
@@ -1053,7 +1390,8 @@ function renderLeftPanel()
         { text = u8 'Auto Alert', menu = 2 },
         { text = u8 'Auto Find', menu = 3 },
         { text = u8 'Auto Fix (experimental)', menu = 4 },
-        { text = u8 'SS Tools', menu = 5 },
+        { text = u8 'Skin Changer', menu = 5 },
+        { text = u8 'SS Tools', menu = 6 },
         { text = u8 'Спец.Клавиши', menu = 9 },
         { text = u8 'Настройки', menu = 10 }
     }
