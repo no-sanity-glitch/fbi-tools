@@ -869,7 +869,7 @@ function sampev.onServerMessage(color, text)
     end
 
     -- Binder
-    if text and State.binder then
+    if text and State.binder.v then
         for _, action in ipairs(BinderActions) do
             if action.isEnabled and action.isEnabled() then
                 local name = text:match(action.pattern)
