@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.10')
+script_version('1.0.11')
 
 local CONFIG = {
     AUTO_UPDATE = true,
@@ -46,7 +46,7 @@ if enable_autoupdate then
             Update.json_url =
                 "https://raw.githubusercontent.com/no-sanity-glitch/fbi-tools/refs/heads/main/version.json?" ..
                 tostring(os.clock())
-            Update.prefix = "[" .. string.upper(thisScript().name) .. "]: "
+            Update.prefix = "[" .. thisScript().name .. "]: "
             Update.url = "https://github.com/no-sanity-glitch/fbi-tools/"
         end
     end
@@ -71,8 +71,8 @@ u8 = encoding.UTF8
 local mainIni = inicfg.load({
     config = {
         intImGui = 0,
-        backup_text = "Требуется подкрепление. Район %s.",
         auto_find_level_selected = 10,
+        skin = 0
     },
     admin = {
         nameTitle = false,
@@ -88,22 +88,55 @@ local mainIni = inicfg.load({
         auto_find = false,
         auto_fix = false,
         stroboscopes = false,
+        binder = false,
+        bind_cuff = false,
+        bind_fme = false,
+        bind_frisk = false,
+        bind_incar = false,
+        bind_eject = false,
+        bind_arest = false,
     }
 }, 'Tools')
+
+local json = getWorkingDirectory() .. '\\config\\fbi_tools_binds.json'
+local binds = {}
+
+function jsonSave(jsonFilePath, t)
+    file = io.open(jsonFilePath, "w")
+    file:write(encodeJson(t))
+    file:flush()
+    file:close()
+end
+
+function jsonRead(jsonFilePath)
+    local file = io.open(jsonFilePath, "r+")
+    local jsonInString = file:read("*a")
+    file:close()
+    local jsonTable = decodeJson(jsonInString)
+    return jsonTable
+end
 
 local State = {
     main_window = imgui.ImBool(false),
     CheckBoxDialogID = imgui.ImBool(false),
     straboscopes = imgui.ImBool(mainIni.state.stroboscopes),
+    binder = imgui.ImBool(mainIni.state.binder),
     auto_alert_state = imgui.ImBool(mainIni.state.auto_alert),
     auto_alert_backup_text_buffer = imgui.ImBuffer(256),
+    binder_cuff_text_buffer = imgui.ImBuffer(256),
+    binder_fme_text_buffer = imgui.ImBuffer(256),
+    binder_frisk_text_buffer = imgui.ImBuffer(256),
+    binder_incar_text_buffer = imgui.ImBuffer(256),
+    binder_eject_text_buffer = imgui.ImBuffer(256),
+    binder_arest_text_buffer = imgui.ImBuffer(256),
     auto_find_state = imgui.ImBool(mainIni.state.auto_find),
     auto_fix_state = imgui.ImBool(mainIni.state.auto_fix),
     menu = 0,
     blackout = false,
     blackout_textdraw_id = nil,
     statusSsMode = false,
-    main_color = mainIni.config.intImGui
+    main_color = mainIni.config.intImGui,
+    skinSearch = imgui.ImBuffer(256)
 }
 
 local AutoAlert = {
@@ -128,6 +161,19 @@ local AutoFix = {
     isFilling = false
 }
 
+local Binder = {
+    cuff = imgui.ImBool(mainIni.state.bind_cuff),
+    fme = imgui.ImBool(mainIni.state.bind_fme),
+    frisk = imgui.ImBool(mainIni.state.bind_frisk),
+    incar = imgui.ImBool(mainIni.state.bind_incar),
+    eject = imgui.ImBool(mainIni.state.bind_eject),
+    arest = imgui.ImBool(mainIni.state.bind_arest),
+}
+
+local SkinChanger = {
+    selectedSkin = mainIni.config.skin
+}
+
 local elements = {
     checkbox = {},
     static = { nameStatis = imgui.ImBool(mainIni.admin.nameTitle) },
@@ -139,6 +185,337 @@ local HotKeys = {
     battlepass = { v = decodeJson(mainIni.hotkeys.battlepass) },
     backup = { v = decodeJson(mainIni.hotkeys.backup) },
     su = { v = decodeJson(mainIni.hotkeys.su) }
+}
+
+local pearsSkins = {}
+
+local skins = {
+    { id = 1,   name = 'The Truth' },
+    { id = 2,   name = 'Maccer' },
+    { id = 3,   name = 'Andre' },
+    { id = 4,   name = 'Barry "Big Bear" Thorne [Thin]' },
+    { id = 5,   name = 'Barry "Big Bear" Thorne [Big]' },
+    { id = 6,   name = 'Emmet' },
+    { id = 7,   name = 'Taxi Driver/Train Driver' },
+    { id = 8,   name = 'Janitor' },
+    { id = 9,   name = 'Normal Ped' },
+    { id = 10,  name = 'Old Woman' },
+    { id = 11,  name = 'Casino croupier' },
+    { id = 12,  name = 'Rich Woman' },
+    { id = 13,  name = 'Street Girl' },
+    { id = 14,  name = 'Normal Ped' },
+    { id = 15,  name = 'Mr.Whittaker (RS Haul Owner)' },
+    { id = 16,  name = 'Airport Ground Worker' },
+    { id = 17,  name = 'Businessman' },
+    { id = 18,  name = 'Beach Visitor' },
+    { id = 19,  name = 'DJ' },
+    { id = 20,  name = 'Rich Guy (Madd Dogg\'s Manager)' },
+    { id = 21,  name = 'Normal Ped' },
+    { id = 22,  name = 'Normal Ped' },
+    { id = 23,  name = 'BMXer' },
+    { id = 24,  name = 'Madd Dogg Bodyguard' },
+    { id = 25,  name = 'Madd Dogg Bodyguard' },
+    { id = 26,  name = 'Backpacker' },
+    { id = 27,  name = 'Construction Worker' },
+    { id = 28,  name = 'Drug Dealer' },
+    { id = 29,  name = 'Drug Dealer' },
+    { id = 30,  name = 'Drug Dealer' },
+    { id = 31,  name = 'Farm-Town inhabitant' },
+    { id = 32,  name = 'Farm-Town inhabitant' },
+    { id = 33,  name = 'Farm-Town inhabitant' },
+    { id = 34,  name = 'Farm-Town inhabitant' },
+    { id = 35,  name = 'Gardener' },
+    { id = 36,  name = 'Golfer' },
+    { id = 37,  name = 'Golfer' },
+    { id = 38,  name = 'Normal Ped' },
+    { id = 39,  name = 'Normal Ped' },
+    { id = 40,  name = 'Normal Ped' },
+    { id = 41,  name = 'Normal Ped' },
+    { id = 42,  name = 'Jethro' },
+    { id = 43,  name = 'Normal Ped' },
+    { id = 44,  name = 'Normal Ped' },
+    { id = 45,  name = 'Beach Visitor' },
+    { id = 46,  name = 'Normal Ped' },
+    { id = 47,  name = 'Normal Ped' },
+    { id = 48,  name = 'Normal Ped' },
+    { id = 49,  name = 'Snakehead (Da Nang)' },
+    { id = 50,  name = 'Mechanic' },
+    { id = 51,  name = 'Mountain Biker' },
+    { id = 52,  name = 'Mountain Biker' },
+    { id = 53,  name = 'Unknown' },
+    { id = 54,  name = 'Normal Ped' },
+    { id = 55,  name = 'Normal Ped' },
+    { id = 56,  name = 'Normal Ped' },
+    { id = 57,  name = 'Oriental Ped' },
+    { id = 58,  name = 'Oriental Ped' },
+    { id = 59,  name = 'Normal Ped' },
+    { id = 60,  name = 'Normal Ped' },
+    { id = 61,  name = 'Pilot' },
+    { id = 62,  name = 'Colonel Fuhrberger' },
+    { id = 63,  name = 'Prostitute' },
+    { id = 64,  name = 'Prostitute' },
+    { id = 65,  name = 'Kendl Johnson' },
+    { id = 66,  name = 'Pool Player' },
+    { id = 67,  name = 'Pool Player' },
+    { id = 68,  name = 'Priest/Preacher' },
+    { id = 69,  name = 'Normal Ped' },
+    { id = 70,  name = 'Scientist' },
+    { id = 71,  name = 'Security Guard' },
+    { id = 72,  name = 'Hippy' },
+    { id = 73,  name = 'Hippy' },
+    { id = 75,  name = 'Prostitute' },
+    { id = 76,  name = 'Stewardess' },
+    { id = 77,  name = 'Homeless' },
+    { id = 78,  name = 'Homeless' },
+    { id = 79,  name = 'Homeless' },
+    { id = 80,  name = 'Boxer' },
+    { id = 81,  name = 'Boxer' },
+    { id = 82,  name = 'Black Elvis' },
+    { id = 83,  name = 'White Elvis' },
+    { id = 84,  name = 'Blue Elvis' },
+    { id = 85,  name = 'Prostitute' },
+    { id = 86,  name = 'Ryder with robbery mask' },
+    { id = 87,  name = 'Stripper' },
+    { id = 88,  name = 'Normal Ped' },
+    { id = 89,  name = 'Normal Ped' },
+    { id = 90,  name = 'Jogger' },
+    { id = 91,  name = 'Rich Woman' },
+    { id = 93,  name = 'Normal Ped' },
+    { id = 94,  name = 'Normal Ped' },
+    { id = 95,  name = 'Normal Ped, Works at or owns Dillimore Gas Station' },
+    { id = 96,  name = 'Jogger' },
+    { id = 97,  name = 'Lifeguard' },
+    { id = 98,  name = 'Normal Ped' },
+    { id = 100, name = 'Biker' },
+    { id = 101, name = 'Normal Ped' },
+    { id = 102, name = 'Balla' },
+    { id = 103, name = 'Balla' },
+    { id = 104, name = 'Balla' },
+    { id = 105, name = 'Grove Street Families' },
+    { id = 106, name = 'Grove Street Families' },
+    { id = 107, name = 'Grove Street Families' },
+    { id = 108, name = 'Los Santos Vagos' },
+    { id = 109, name = 'Los Santos Vagos' },
+    { id = 110, name = 'Los Santos Vagos' },
+    { id = 111, name = 'The Russian Mafia' },
+    { id = 112, name = 'The Russian Mafia' },
+    { id = 113, name = 'The Russian Mafia' },
+    { id = 114, name = 'Varios Los Aztecas' },
+    { id = 115, name = 'Varios Los Aztecas' },
+    { id = 116, name = 'Varios Los Aztecas' },
+    { id = 117, name = 'Triad' },
+    { id = 118, name = 'Triad' },
+    { id = 119, name = 'Johhny Sindacco' },
+    { id = 120, name = 'Triad Boss' },
+    { id = 121, name = 'Da Nang Boy' },
+    { id = 122, name = 'Da Nang Boy' },
+    { id = 123, name = 'Da Nang Boy' },
+    { id = 124, name = 'The Mafia' },
+    { id = 125, name = 'The Mafia' },
+    { id = 126, name = 'The Mafia' },
+    { id = 127, name = 'The Mafia' },
+    { id = 128, name = 'Farm Inhabitant' },
+    { id = 129, name = 'Farm Inhabitant' },
+    { id = 130, name = 'Farm Inhabitant' },
+    { id = 131, name = 'Farm Inhabitant' },
+    { id = 132, name = 'Farm Inhabitant' },
+    { id = 133, name = 'Farm Inhabitant' },
+    { id = 134, name = 'Homeless' },
+    { id = 135, name = 'Homeless' },
+    { id = 136, name = 'Normal Ped' },
+    { id = 137, name = 'Homeless' },
+    { id = 138, name = 'Beach Visitor' },
+    { id = 139, name = 'Beach Visitor' },
+    { id = 140, name = 'Beach Visitor' },
+    { id = 141, name = 'Businesswoman' },
+    { id = 142, name = 'Taxi Driver' },
+    { id = 143, name = 'Crack Maker' },
+    { id = 144, name = 'Crack Maker' },
+    { id = 145, name = 'Crack Maker' },
+    { id = 146, name = 'Crack Maker' },
+    { id = 147, name = 'Businessman' },
+    { id = 148, name = 'Businesswoman' },
+    { id = 149, name = 'Big Smoke Armored' },
+    { id = 150, name = 'Businesswoman' },
+    { id = 151, name = 'Normal Ped' },
+    { id = 152, name = 'Prostitute' },
+    { id = 153, name = 'Construction Worker' },
+    { id = 154, name = 'Beach Visitor' },
+    { id = 155, name = 'Well Stacked Pizza Worker' },
+    { id = 156, name = 'Barber' },
+    { id = 157, name = 'Hillbilly' },
+    { id = 158, name = 'Farmer' },
+    { id = 159, name = 'Hillbilly' },
+    { id = 160, name = 'Hillbilly' },
+    { id = 161, name = 'Farmer' },
+    { id = 162, name = 'Hillbilly' },
+    { id = 163, name = 'Black Bouncer' },
+    { id = 164, name = 'White Bouncer' },
+    { id = 165, name = 'White MIB agent' },
+    { id = 166, name = 'Black MIB agent' },
+    { id = 167, name = 'Cluckin\' Bell Worker' },
+    { id = 168, name = 'Hotdog/Chilli Dog Vendor' },
+    { id = 169, name = 'Normal Ped' },
+    { id = 170, name = 'Normal Ped' },
+    { id = 171, name = 'Blackjack Dealer' },
+    { id = 172, name = 'Casino croupier' },
+    { id = 173, name = 'San Fierro Rifa' },
+    { id = 174, name = 'San Fierro Rifa' },
+    { id = 175, name = 'San Fierro Rifa' },
+    { id = 176, name = 'Barber' },
+    { id = 177, name = 'Barber' },
+    { id = 178, name = 'Whore' },
+    { id = 179, name = 'Ammunation Salesman' },
+    { id = 180, name = 'Tattoo Artist' },
+    { id = 181, name = 'Punk' },
+    { id = 182, name = 'Cab Driver' },
+    { id = 183, name = 'Normal Ped' },
+    { id = 184, name = 'Normal Ped' },
+    { id = 185, name = 'Normal Ped' },
+    { id = 186, name = 'Normal Ped' },
+    { id = 187, name = 'Businessman' },
+    { id = 188, name = 'Normal Ped' },
+    { id = 189, name = 'Valet' },
+    { id = 190, name = 'Barbara Schternvart' },
+    { id = 191, name = 'Helena Wankstein' },
+    { id = 192, name = 'Michelle Cannes' },
+    { id = 193, name = 'Katie Zhan' },
+    { id = 194, name = 'Millie Perkins' },
+    { id = 195, name = 'Denise Robinson' },
+    { id = 196, name = 'Farm-Town inhabitant' },
+    { id = 197, name = 'Hillbilly' },
+    { id = 198, name = 'Farm-Town inhabitant' },
+    { id = 199, name = 'Farm-Town inhabitant' },
+    { id = 200, name = 'Hillbilly' },
+    { id = 201, name = 'Farmer' },
+    { id = 202, name = 'Farmer' },
+    { id = 203, name = 'Karate Teacher' },
+    { id = 204, name = 'Karate Teacher' },
+    { id = 205, name = 'Burger Shot Cashier' },
+    { id = 206, name = 'Cab Driver' },
+    { id = 207, name = 'Prostitute' },
+    { id = 208, name = 'Su Xi Mu (Suzie)' },
+    { id = 209, name = 'Oriental Noodle stand vendor' },
+    { id = 210, name = 'Oriental Boating School Instructor' },
+    { id = 211, name = 'Clothes shop staff' },
+    { id = 212, name = 'Homeless' },
+    { id = 213, name = 'Weird old man' },
+    { id = 214, name = 'Waitress (Maria Latore)' },
+    { id = 215, name = 'Normal Ped' },
+    { id = 216, name = 'Normal Ped' },
+    { id = 217, name = 'Clothes shop staff' },
+    { id = 218, name = 'Normal Ped' },
+    { id = 219, name = 'Rich Woman' },
+    { id = 220, name = 'Cab Driver' },
+    { id = 221, name = 'Normal Ped' },
+    { id = 222, name = 'Normal Ped' },
+    { id = 223, name = 'Normal Ped' },
+    { id = 224, name = 'Normal Ped' },
+    { id = 225, name = 'Normal Ped' },
+    { id = 226, name = 'Normal Ped' },
+    { id = 227, name = 'Oriental Businessman' },
+    { id = 228, name = 'Oriental Ped' },
+    { id = 229, name = 'Oriental Ped' },
+    { id = 230, name = 'Homeless' },
+    { id = 231, name = 'Normal Ped' },
+    { id = 232, name = 'Normal Ped' },
+    { id = 233, name = 'Normal Ped' },
+    { id = 234, name = 'Cab Driver' },
+    { id = 235, name = 'Normal Ped' },
+    { id = 236, name = 'Normal Ped' },
+    { id = 237, name = 'Prostitute' },
+    { id = 238, name = 'Prostitute' },
+    { id = 239, name = 'Homeless' },
+    { id = 240, name = 'The D.A' },
+    { id = 241, name = 'Afro-American' },
+    { id = 242, name = 'Mexican' },
+    { id = 243, name = 'Prostitute' },
+    { id = 244, name = 'Stripper' },
+    { id = 245, name = 'Prostitute' },
+    { id = 246, name = 'Stripper' },
+    { id = 247, name = 'Biker' },
+    { id = 248, name = 'Biker' },
+    { id = 249, name = 'Pimp' },
+    { id = 250, name = 'Normal Ped' },
+    { id = 251, name = 'Lifeguard' },
+    { id = 252, name = 'Naked Valet' },
+    { id = 253, name = 'Bus Driver' },
+    { id = 254, name = 'Biker Drug Dealer' },
+    { id = 255, name = 'Chauffeur (Limo Driver)' },
+    { id = 256, name = 'Stripper' },
+    { id = 257, name = 'Stripper' },
+    { id = 258, name = 'Heckler' },
+    { id = 259, name = 'Heckler' },
+    { id = 260, name = 'Construction Worker' },
+    { id = 261, name = 'Cab driver' },
+    { id = 262, name = 'Cab driver' },
+    { id = 263, name = 'Normal Ped' },
+    { id = 264, name = 'Clown (Ice-cream Van Driver)' },
+    { id = 265, name = 'Officer Frank Tenpenny (Corrupt Cop)' },
+    { id = 266, name = 'Officer Eddie Pulaski (Corrupt Cop)' },
+    { id = 267, name = 'Officer Jimmy Hernandez' },
+    { id = 268, name = 'Dwaine/Dwayne' },
+    { id = 269, name = 'Melvin "Big Smoke" Harris (Mission)' },
+    { id = 270, name = 'Sean \'Sweet\' Johnson' },
+    { id = 271, name = 'Lance \'Ryder\' Wilson' },
+    { id = 272, name = 'Mafia Boss' },
+    { id = 273, name = 'T-Bone Mendez' },
+    { id = 274, name = 'Paramedic (Emergency Medical Technician)' },
+    { id = 275, name = 'Paramedic (Emergency Medical Technician)' },
+    { id = 276, name = 'Paramedic (Emergency Medical Technician)' },
+    { id = 277, name = 'Firefighter' },
+    { id = 278, name = 'Firefighter' },
+    { id = 279, name = 'Firefighter' },
+    { id = 280, name = 'Los Santos Police Officer' },
+    { id = 281, name = 'San Fierro Police Officer' },
+    { id = 282, name = 'Las Venturas Police Officer' },
+    { id = 283, name = 'County Sheriff' },
+    { id = 284, name = 'LSPD Motorbike Cop' },
+    { id = 285, name = 'S.W.A.T Special Forces' },
+    { id = 286, name = 'Federal Agent' },
+    { id = 287, name = 'San Andreas Army' },
+    { id = 288, name = 'Desert Sheriff' },
+    { id = 289, name = 'Zero' },
+    { id = 290, name = 'Ken Rosenberg' },
+    { id = 291, name = 'Kent Paul' },
+    { id = 292, name = 'Cesar Vialpando' },
+    { id = 293, name = 'Jeffery "OG Loc" Martin/Cross' },
+    { id = 294, name = 'Wu Zi Mu (Woozie)' },
+    { id = 295, name = 'Michael Toreno' },
+    { id = 296, name = 'Jizzy B.' },
+    { id = 297, name = 'Madd Dogg' },
+    { id = 298, name = 'Catalina' },
+    { id = 299, name = 'Claude Speed' },
+    { id = 300, name = 'Los Santos Police Officer (Without gun holster)' },
+    { id = 301, name = 'San Fierro Police Officer (Without gun holster)' },
+    { id = 302, name = 'Las Venturas Police Officer (Without gun holster)' },
+    { id = 303, name = 'Los Santos Police Officer (Without uniform)' },
+    { id = 304, name = 'Los Santos Police Officer (Without uniform)' },
+    { id = 305, name = 'Las Venturas Police Officer (Without uniform)' },
+    { id = 306, name = 'Los Santos Police Officer' },
+    { id = 307, name = 'San Fierro Police Officer' },
+    { id = 308, name = 'San Fierro Paramedic (Emergency Medical Technician)' },
+    { id = 309, name = 'Las Venturas Police Officer' },
+    { id = 310, name = 'Country Sheriff (Without hat)' },
+    { id = 311, name = 'Desert Sheriff (Without hat)' },
+}
+
+local BinderActions = {
+    {
+        pattern = "%* Вы ведёте за собой ([%w_]+)%.",
+        bindKey = "fme_text",
+        isEnabled = function() return Binder.fme.v end
+    },
+    {
+        pattern = "Я посадил ([%w_]+) в машину",
+        bindKey = "incar_text",
+        isEnabled = function() return Binder.incar.v end
+    },
+    {
+        pattern = "Я выкинул ([%w_]+) из транспорта",
+        bindKey = "eject_text",
+        isEnabled = function() return Binder.eject.v end
+    }
 }
 
 -- Mutex lock
@@ -168,6 +545,7 @@ end
 
 function save()
     inicfg.save(mainIni, 'Tools.ini')
+    jsonSave(json, binds)
 end
 
 -- Stroboscopes
@@ -215,6 +593,9 @@ function main()
         pcall(Update.check, Update.json_url, Update.prefix, Update.url)
     end
 
+    loadBinds()
+    loadPearsLauncherSkins()
+    concatSkins()
     registerChatCommands()
     registerHotkeys()
     initializeMainThread()
@@ -256,6 +637,10 @@ function registerChatCommands()
             end
         end
     end)
+
+    sampRegisterChatCommand('cuff', bind_cuff)
+    sampRegisterChatCommand('frisk', bind_frisk)
+    sampRegisterChatCommand('arest', bind_arest)
 end
 
 function registerHotkeys()
@@ -270,6 +655,7 @@ function initializeMainThread()
         while true do
             imgui.Process = State.main_window.v
             handleStroboscopes()
+            handleSkinChanger()
             handleAutoFix()
             wait(0)
         end
@@ -459,26 +845,43 @@ function imgui.HelpMarker(text)
     end
 end
 
--- IC chat only
 function sampev.onServerMessage(color, text)
-    if not text or not State.statusSsMode then return true end
+    -- IC chat only
+    if text and State.statusSsMode then
+        local filtered_patterns = {
+            '%[AD%]',       -- AD messages
+            ' SMS ',        -- SMS messages
+            '%[ADM%]',      -- Admin messages
+            '%[PP%]',       -- Punishment messages
+            "^%*%*.+%*%*$", -- Department radio/news
+            "^%*%* .-:",    -- Radio messages
+            '%(%(.-%)%)',   -- OOC messages
+            '____',         -- PayDay messages
+            '{0088ff}'      -- Specific color messages
+        }
 
-    local filtered_patterns = {
-        '%[AD%]',       -- AD messages
-        ' SMS ',        -- SMS messages
-        '%[ADM%]',      -- Admin messages
-        '%[PP%]',       -- Punishment messages
-        "^%*%*.+%*%*$", -- Department radio/news
-        "^%*%* .-:",    -- Radio messages
-        '%(%(.-%)%)',   -- OOC messages
-        '____',         -- PayDay messages
-        '{0088ff}'      -- Specific color messages
-    }
+        for _, pattern in ipairs(filtered_patterns) do
+            if text:find(pattern) then
+                logFilteredMessage(color, text)
+                return false
+            end
+        end
+    end
 
-    for _, pattern in ipairs(filtered_patterns) do
-        if text:find(pattern) then
-            logFilteredMessage(color, text)
-            return false
+    -- Binder
+    if text and State.binder then
+        for _, action in ipairs(BinderActions) do
+            if action.isEnabled and action.isEnabled() then
+                local name = text:match(action.pattern)
+                if name then
+                    local template = binds[action.bindKey]
+                    if template then
+                        local msg = u8:decode(template):format(name)
+                        sampSendChat(msg)
+                    end
+                    break
+                end
+            end
         end
     end
 
@@ -586,6 +989,8 @@ local changelog10 = [[
 11. Добавлено автообновление скрипта.
 12. Добавлен чёрный экран для ссок. /blackout
 13. Добавлен авто перенос в /d и /r.
+14. Добавлены базовые отыгровки /cuff, /fme, /frisk, /incar, /eject, /arest.
+15. Добавлен скин ченджер.
 ]]
 
 local authors = [[
@@ -612,8 +1017,8 @@ function welcomeMenu()
 end
 
 -- Auto Alert
-function sampev.onSendTakeDamage(playerId, _, _, _, _)
-    if not playerId or playerId > 1000 or not State.auto_alert_state.v then return end
+function sampev.onSendTakeDamage(playerId, _, weapon, _, _)
+    if not playerId or playerId > 1000 or not State.auto_alert_state.v or weapon < 0 or weapon > 38 then return end
     local now = os.time()
     if not AutoAlert.attackerCooldowns[playerId] or now - AutoAlert.attackerCooldowns[playerId] >= CONFIG.ALERT_INTERVAL then
         local name = sampGetPlayerNickname(playerId)
@@ -644,7 +1049,7 @@ end
 
 function callForBackup()
     local zone = getZoneName()
-    local backup_message = u8:decode(mainIni.config.backup_text)
+    local backup_message = u8:decode(binds['backup_text'])
     local message = ("/r " .. backup_message):format(zone)
     sampSendChat(message)
 end
@@ -776,6 +1181,183 @@ function sampev.onRemove3DTextLabel(id)
     AutoFix.tehvehTexts[id] = nil
 end
 
+-- SkinChanger
+function handleSkinChanger()
+    if SkinChanger.selectedSkin ~= 0 then
+        if skins[SkinChanger.selectedSkin].id ~= getCharModel(PLAYER_PED) then
+            apply()
+        end
+    end
+end
+
+function loadPearsLauncherSkins() -- from vAcs
+    local file = getGameDirectory() .. '\\data\\peds.ide'
+    if doesFileExist(file) then
+        pearsSkins = {}
+        local F = io.open(file, r)
+        local Text = F:read('*all')
+        F:close()
+
+        local pedline   = 0
+        local lineIndex = 0
+        local l_s_count = 0
+        for line in Text:gmatch('[^\n]+') do
+            lineIndex = lineIndex + 1
+            if line:find('^peds') then
+                pedline = lineIndex
+            end
+            if pedline ~= 0 and lineIndex > pedline then
+                if line:find('(%d+), (%w+)') then
+                    local id, model = line:match('(%d+), (%w+)')
+                    if tonumber(id) then
+                        local model = model .. ' (' .. id .. ')'
+                        if tonumber(id) > 311 then
+                            table.insert(pearsSkins,
+                                { id = tonumber(id) or 0, name = '(Pears Project) ' .. tostring(model) or 'unknown' })
+                            l_s_count = l_s_count + 1
+                        end
+                    end
+                end
+            end
+        end
+        print('Загружено ' .. l_s_count .. ' скинов!')
+    else
+        print('Не удалось загрузить скины из лаунчера.', 2, true, false)
+    end
+end
+
+function concatSkins()
+    if isPearsLauncher() then
+        for i = 1, #pearsSkins do
+            table.insert(skins, pearsSkins[i])
+        end
+    end
+end
+
+function isPearsLauncher()
+    return doesFileExist(getGameDirectory() .. '\\!pears_sentry.asi')
+end
+
+function isPearsSkin(id)
+    return id > 311 or id < 0
+end
+
+function saveSkin()
+    mainIni.config.skin = SkinChanger.selectedSkin
+    inicfg.save(mainIni, 'Tools.ini')
+end
+
+function apply()
+    saveSkin()
+    if SkinChanger.selectedSkin ~= 0 then
+        bs = raknetNewBitStream()
+        raknetBitStreamWriteInt32(bs, select(2, sampGetPlayerIdByCharHandle(PLAYER_PED)))
+        raknetBitStreamWriteInt32(bs, skins[SkinChanger.selectedSkin].id)
+        raknetEmulRpcReceiveBitStream(153, bs)
+        raknetDeleteBitStream(bs)
+    end
+end
+
+function setPlayerSkin(player, skin)
+    saveSkin()
+    bs = raknetNewBitStream()
+    raknetBitStreamWriteInt32(bs, player)
+    raknetBitStreamWriteInt32(bs, skin)
+    raknetEmulRpcReceiveBitStream(153, bs)
+    raknetDeleteBitStream(bs)
+end
+
+-- Simple Binder
+
+function loadBinds()
+    if not doesDirectoryExist(getWorkingDirectory() .. '\\config') then
+        createDirectory(getWorkingDirectory() ..
+            '\\config')
+    end
+    if not doesFileExist(json) then
+        local t = {
+            ['backup_text'] = u8("Требуется подкрепление. Район %s."),
+            ['cuff_text'] = u8("/do Наручники на поясе."),
+            ['fme_text'] = u8("/me взял %s за бицепс и повёл перед собой."),
+            ['frisk_text'] = u8("/me ощупывает руки, ноги, торс %s, проверяя содержимое карманов."),
+            ['incar_text'] = u8("/me открыл дверь авто, помог %s сесть, пристегнул ремнями безопасности, закрыл дверь."),
+            ['eject_text'] = u8("/me открыл дверь авто, отстегнул ремни безопасности, помог %s выйти из авто."),
+            ['arest_text'] = u8("/me достал ключ от камеры, открыл дверь, завёл %s, снял наручники, захлопнул дверь."),
+        }
+        jsonSave(json, t)
+    end
+    binds = jsonRead(json)
+end
+
+function bind_cuff(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ Мысли ]: Заковать в наручники [ /cuff ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.cuff.v then
+        lua_thread.create(function()
+            local message = formatWithName(u8:decode(binds['cuff_text']), id)
+            handle_binder_cmd(message, '/cuff ', id)
+        end)
+    else
+        sampSendChat('/cuff ' .. id)
+    end
+end
+
+function bind_frisk(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ Мысли ]: Обыскать игрока [ /frisk ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.frisk.v then
+        lua_thread.create(function()
+            local message = formatWithName(u8:decode(binds['frisk_text']), id)
+            handle_binder_cmd(message, '/frisk ', id)
+        end)
+    else
+        sampSendChat('/frisk ' .. id)
+    end
+end
+
+function bind_arest(param)
+    local id = tonumber(param)
+    if not id then
+        sampAddChatMessage('{CCCCCC}[ Мысли ]: Посадить преступника [ /arest ID ]', -1)
+        return
+    end
+
+    if State.binder.v and Binder.arest.v then
+        lua_thread.create(function()
+            local message = formatWithName(u8:decode(binds['arest_text']), id)
+            handle_binder_cmd(message, '/arest ', id)
+        end)
+    else
+        sampSendChat('/arest ' .. id)
+    end
+end
+
+function formatWithName(msg, arg)
+    local id = tonumber(arg)
+    if not sampIsPlayerConnected(id) then return nil end
+    local nickname = sampGetPlayerNickname(id)
+    local name = nickname:match("([^_]+)")
+    return (msg):format(name)
+end
+
+function handle_binder_cmd(msg, cmd, id)
+    if msg and id then
+        sampSendChat(msg)
+        wait(500)
+        sampSendChat(cmd .. tostring(id))
+    else
+        sampAddChatMessage("[Tools] {FFFFFF}Игрок не подключён.", State.main_color)
+    end
+end
+
 function imgui.OnDrawFrame()
     setColorScheme()
     if State.main_window.v then renderMainWindow() end
@@ -842,7 +1424,9 @@ function renderLeftPanel()
         { text = u8 'Auto Alert', menu = 2 },
         { text = u8 'Auto Find', menu = 3 },
         { text = u8 'Auto Fix (experimental)', menu = 4 },
-        { text = u8 'SS Tools', menu = 5 },
+        { text = u8 'Skin Changer', menu = 5 },
+        { text = u8 'SS Tools', menu = 6 },
+        { text = u8 'Биндер', menu = 7 },
         { text = u8 'Спец.Клавиши', menu = 9 },
         { text = u8 'Настройки', menu = 10 }
     }
@@ -866,6 +1450,8 @@ function renderRightPanel()
         [3] = menu_3,
         [4] = menu_4,
         [5] = menu_5,
+        [6] = menu_6,
+        [7] = menu_7,
         [9] = menu_9,
         [10] = menu_10
     }
@@ -885,11 +1471,11 @@ function menu_1()
         if State.straboscopes.v then
             sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {01DF01}включены{ffffff}.", State.main_color)
             mainIni.state.stroboscopes = true
-            inicfg.save(mainIni, 'Tools.ini')
+            save()
         else
             sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {ff0000}отключены{ffffff}.", State.main_color)
             mainIni.state.stroboscopes = false
-            inicfg.save(mainIni, 'Tools.ini')
+            save()
         end
     end
     imgui.SameLine()
@@ -911,15 +1497,11 @@ end
 
 function menu_2()
     if imadd.ToggleButton("##auto_alert_state", State.auto_alert_state) then
-        if State.auto_alert_state.v then
-            sampAddChatMessage("[Tools] {FFFFFF}Запрос о поддержке {01DF01}включён{ffffff}.", State.main_color)
-            mainIni.state.auto_alert = true
-            inicfg.save(mainIni, 'Tools.ini')
-        else
-            sampAddChatMessage("[Tools] {FFFFFF}Запрос о поддержке {ff0000}отключён{ffffff}.", State.main_color)
-            mainIni.state.auto_alert = false
-            inicfg.save(mainIni, 'Tools.ini')
-        end
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Запрос о поддержке " ..
+            (State.auto_alert_state.v and "{01DF01}включён" or "{ff0000}отключён") .. "{ffffff}.", State.main_color)
+        mainIni.state.auto_alert = State.auto_alert_state.v
+        save()
     end
     imgui.SameLine()
     imgui.Text(u8 "Запрос о поддержке")
@@ -927,7 +1509,7 @@ function menu_2()
     if imgui.HotKey("##HotKeys.backup", HotKeys.backup) then
         rkeys.changeHotKey(ID_BACKUP, HotKeys.backup.v)
         mainIni.hotkeys.backup = encodeJson(HotKeys.backup.v)
-        inicfg.save(mainIni, 'Tools.ini')
+        save()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
@@ -936,7 +1518,7 @@ function menu_2()
     if imgui.HotKey("##HotKeys.su", HotKeys.su) then
         rkeys.changeHotKey(ID_SU, HotKeys.su.v)
         mainIni.hotkeys.su = encodeJson(HotKeys.su.v)
-        inicfg.save(mainIni, 'Tools.ini')
+        save()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
@@ -946,25 +1528,21 @@ function menu_2()
     imgui.SameLine()
     imgui.HelpMarker(u8 "Используйте #zone для указания района. Например: Требуется подкрепление. Район #zone.")
 
-    State.auto_alert_backup_text_buffer.v = mainIni.config.backup_text:gsub("%%s", "#zone")
-    if imgui.InputText(u8 '', State.auto_alert_backup_text_buffer) then
+    State.auto_alert_backup_text_buffer.v = binds['backup_text']:gsub("%%s", "#zone")
+    if imgui.InputText('##auto_alert_backup_text_buffer', State.auto_alert_backup_text_buffer) then
         local backup_text = State.auto_alert_backup_text_buffer.v:gsub("#zone", "%%s")
-        mainIni.config.backup_text = backup_text
-        inicfg.save(mainIni, 'Tools.ini')
+        binds['backup_text'] = backup_text
+        save()
     end
 end
 
 function menu_3()
     if imadd.ToggleButton("##auto_find_state", State.auto_find_state) then
-        if State.auto_find_state.v then
-            sampAddChatMessage("[Tools] {FFFFFF}Автопоиск {01DF01}включён{ffffff}.", State.main_color)
-            mainIni.state.auto_find = true
-            inicfg.save(mainIni, 'Tools.ini')
-        else
-            sampAddChatMessage("[Tools] {FFFFFF}Автопоиск {ff0000}отключён{ffffff}.", State.main_color)
-            mainIni.state.auto_find = false
-            inicfg.save(mainIni, 'Tools.ini')
-        end
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Автопоиск " ..
+            (State.auto_find_state.v and "{01DF01}включён" or "{ff0000}отключён") .. "{ffffff}.", State.main_color)
+        mainIni.state.auto_find = State.auto_find_state.v
+        save()
     end
     imgui.SameLine()
     imgui.Text(u8 "Автопоиск")
@@ -978,7 +1556,7 @@ function menu_3()
     -- for i = 10, 1, -1 do
     --     if imgui.RadioButton(tostring(i), mainIni.config.auto_find_level_selected == i) then
     --         mainIni.config.auto_find_level_selected = i
-    --         inicfg.save(mainIni, 'Tools.ini')
+    --         save()
     --     end
     --     imgui.SameLine()
     -- end
@@ -986,15 +1564,11 @@ end
 
 function menu_4()
     if imadd.ToggleButton("##auto_fix_state", State.auto_fix_state) then
-        if State.auto_fix_state.v then
-            sampAddChatMessage("[Tools] {FFFFFF}Автопочинка {01DF01}включена{ffffff}.", State.main_color)
-            mainIni.state.auto_fix = true
-            inicfg.save(mainIni, 'Tools.ini')
-        else
-            sampAddChatMessage("[Tools] {FFFFFF}Автопочинка {ff0000}отключена{ffffff}.", State.main_color)
-            mainIni.state.auto_fix = false
-            inicfg.save(mainIni, 'Tools.ini')
-        end
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Автопочинка " ..
+            (State.auto_fix_state.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.auto_fix = State.auto_fix_state.v
+        save()
     end
     imgui.SameLine()
     imgui.Text(u8 "Автопочинка и автозаправка")
@@ -1003,9 +1577,152 @@ function menu_4()
 end
 
 function menu_5()
+    imgui.Text(u8 "Визуальная смена скина")
+    imgui.Separator()
+    imgui.Text(u8 'Поиск:')
+    imgui.InputText(u8 '', State.skinSearch)
+    if imgui.Selectable(u8 'Выкл', SkinChanger.selectedSkin == 0) then
+        SkinChanger.selectedSkin = 0
+        apply()
+    end
+    for i = 1, #skins do
+        local text = tostring(skins[i].id) .. ' - ' .. skins[i].name
+        if #State.skinSearch.v > 0 and text:lower():lower():find(State.skinSearch.v) or #State.skinSearch.v == 0 then
+            if imgui.Selectable((SkinChanger.selectedSkin == i and u8 '• ' or '') .. text, SkinChanger.selectedSkin == i) then
+                SkinChanger.selectedSkin = i
+                apply()
+                save()
+            end
+        end
+    end
+end
+
+function menu_6()
     imgui.Text(u8 "/ss - только IC чат (удаление ad, админских строк, PayDay, /r, /d, OOC чатов).")
     imgui.Text(u8 "/сс - очистить чат.")
     imgui.Text(u8 "/blackout - чёрный экран.")
+end
+
+function menu_7()
+    imgui.CenterText(u8 'Базовые отыгровки')
+    imgui.Separator()
+    if imadd.ToggleButton("##binder", State.binder) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Биндер " ..
+            (State.binder.v and "{01DF01}включён" or "{ff0000}отключён") .. "{ffffff}.", State.main_color)
+        mainIni.state.binder = State.binder.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Биндер")
+    imgui.SameLine()
+    imgui.HelpMarker(u8 "Впишите вашу отыгровку или оставьте как есть, #name заменяется на имя человека id которого вы вписали.")
+    if imadd.ToggleButton("##bindcuff", Binder.cuff) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка наручников " ..
+            (Binder.cuff.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_cuff = Binder.cuff.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка наручников. /cuff")
+    State.binder_cuff_text_buffer.v = binds['cuff_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_cuff_text_buffer', State.binder_cuff_text_buffer) then
+        local text = State.binder_cuff_text_buffer.v:gsub("#name", "%%s")
+        binds['cuff_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindfme", Binder.fme) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка вести за собой " ..
+            (Binder.fme.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_fme = Binder.fme.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка вести за собой. /fme")
+    State.binder_fme_text_buffer.v = binds['fme_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_fme_text_buffer', State.binder_fme_text_buffer) then
+        binds['fme_text'] = State.binder_fme_text_buffer.v:gsub("#name", "%%s")
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindfrisk", Binder.frisk) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка обыска " ..
+            (Binder.frisk.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_frisk = Binder.frisk.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка обыска. /frisk")
+    State.binder_frisk_text_buffer.v = binds['frisk_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_frisk_text_buffer', State.binder_frisk_text_buffer) then
+        local text = State.binder_frisk_text_buffer.v:gsub("#name", "%%s")
+        binds['frisk_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindincar", Binder.incar) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка /incar " ..
+            (Binder.incar.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_incar = Binder.incar.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка /incar")
+    State.binder_incar_text_buffer.v = binds['incar_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_incar_text_buffer', State.binder_incar_text_buffer) then
+        local text = State.binder_incar_text_buffer.v:gsub("#name", "%%s")
+        binds['incar_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindeject", Binder.eject) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка /eject " ..
+            (Binder.eject.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_eject = Binder.eject.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка /eject")
+    State.binder_eject_text_buffer.v = binds['eject_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_eject_text_buffer', State.binder_eject_text_buffer) then
+        local text = State.binder_eject_text_buffer.v:gsub("#name", "%%s")
+        binds['eject_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
+
+    if imadd.ToggleButton("##bindarest", Binder.arest) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Отыгровка /arest " ..
+            (Binder.arest.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.bind_arest = Binder.arest.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Отыгровка /arest")
+    State.binder_arest_text_buffer.v = binds['arest_text']:gsub("%%s", "#name")
+    imgui.PushItemWidth(-1)
+    if imgui.InputText('##binder_arest_text_buffer', State.binder_arest_text_buffer) then
+        local text = State.binder_arest_text_buffer.v:gsub("#name", "%%s")
+        binds['arest_text'] = text
+        save()
+    end
+    imgui.PopItemWidth()
 end
 
 function menu_9()
@@ -1013,7 +1730,7 @@ function menu_9()
     if imgui.HotKey("##HotKeys.main_menu", HotKeys.main_menu) then
         rkeys.changeHotKey(ID_MAIN_MENU, HotKeys.main_menu.v)
         mainIni.hotkeys.main_menu = encodeJson(HotKeys.main_menu.v)
-        inicfg.save(mainIni, 'Tools.ini')
+        save()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
@@ -1022,7 +1739,7 @@ function menu_9()
     if imgui.HotKey("##HotKeys.battlepass", HotKeys.battlepass) then
         rkeys.changeHotKey(ID_BATTLEPASS, HotKeys.battlepass.v)
         mainIni.hotkeys.battlepass = encodeJson(HotKeys.battlepass.v)
-        inicfg.save(mainIni, 'Tools.ini')
+        save()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
@@ -1032,7 +1749,7 @@ end
 function menu_10()
     local styles = { u8 "Серая", u8 "Красная", u8 "Фиолетовая", u8 "Чёрная", u8 "Синяя", u8 "Оранжевая", u8 "Розовая" }
     imgui.Combo(u8 'Стиль интерфейса', elements.int.intImGui, styles)
-    -- imgui.Separator()
+    imgui.Separator()
     -- if imadd.ToggleButton("##idDialog", State.CheckBoxDialogID) then
     --     if State.CheckBoxDialogID.v then
     --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {01DF01}включён{ffffff}.", State.main_color)
@@ -1042,7 +1759,6 @@ function menu_10()
     -- end
     -- imgui.SameLine()
     -- imgui.TextColoredRGB('[Выкл/Вкл]  {FF0000}Dialog ID')
-    -- imgui.SameLine()
 end
 
 function renderLeftPanel()
@@ -1053,7 +1769,9 @@ function renderLeftPanel()
         { text = u8 'Auto Alert', menu = 2 },
         { text = u8 'Auto Find', menu = 3 },
         { text = u8 'Auto Fix (experimental)', menu = 4 },
-        { text = u8 'SS Tools', menu = 5 },
+        { text = u8 'Skin Changer', menu = 5 },
+        { text = u8 'SS Tools', menu = 6 },
+        { text = u8 'Биндер', menu = 7 },
         { text = u8 'Спец.Клавиши', menu = 9 },
         { text = u8 'Настройки', menu = 10 }
     }
