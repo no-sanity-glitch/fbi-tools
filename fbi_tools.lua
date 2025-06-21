@@ -500,6 +500,24 @@ local skins = {
     { id = 311, name = 'Desert Sheriff (Without hat)' },
 }
 
+local BinderActions = {
+    {
+        pattern = "%* Вы ведёте за собой ([%w_]+)%.",
+        bindKey = "fme_text",
+        isEnabled = function() return Binder.fme.v end
+    },
+    {
+        pattern = "Я посадил ([%w_]+) в машину",
+        bindKey = "incar_text",
+        isEnabled = function() return Binder.incar.v end
+    },
+    {
+        pattern = "Я выкинул ([%w_]+) из транспорта",
+        bindKey = "eject_text",
+        isEnabled = function() return Binder.eject.v end
+    }
+}
+
 -- Mutex lock
 
 local locks = {}
@@ -620,13 +638,8 @@ function registerChatCommands()
         end
     end)
 
-    for _, bindCMD in ipairs({ 'fme', 'gme', 'gotome' }) do
-        sampRegisterChatCommand(bindCMD, bind_follow_me)
-    end
     sampRegisterChatCommand('cuff', bind_cuff)
     sampRegisterChatCommand('frisk', bind_frisk)
-    sampRegisterChatCommand('incar', bind_incar)
-    sampRegisterChatCommand('eject', bind_eject)
     sampRegisterChatCommand('arest', bind_arest)
 end
 
@@ -832,26 +845,43 @@ function imgui.HelpMarker(text)
     end
 end
 
--- IC chat only
 function sampev.onServerMessage(color, text)
-    if not text or not State.statusSsMode then return true end
+    -- IC chat only
+    if text and State.statusSsMode then
+        local filtered_patterns = {
+            '%[AD%]',       -- AD messages
+            ' SMS ',        -- SMS messages
+            '%[ADM%]',      -- Admin messages
+            '%[PP%]',       -- Punishment messages
+            "^%*%*.+%*%*$", -- Department radio/news
+            "^%*%* .-:",    -- Radio messages
+            '%(%(.-%)%)',   -- OOC messages
+            '____',         -- PayDay messages
+            '{0088ff}'      -- Specific color messages
+        }
 
-    local filtered_patterns = {
-        '%[AD%]',       -- AD messages
-        ' SMS ',        -- SMS messages
-        '%[ADM%]',      -- Admin messages
-        '%[PP%]',       -- Punishment messages
-        "^%*%*.+%*%*$", -- Department radio/news
-        "^%*%* .-:",    -- Radio messages
-        '%(%(.-%)%)',   -- OOC messages
-        '____',         -- PayDay messages
-        '{0088ff}'      -- Specific color messages
-    }
+        for _, pattern in ipairs(filtered_patterns) do
+            if text:find(pattern) then
+                logFilteredMessage(color, text)
+                return false
+            end
+        end
+    end
 
-    for _, pattern in ipairs(filtered_patterns) do
-        if text:find(pattern) then
-            logFilteredMessage(color, text)
-            return false
+    -- Binder
+    if text and State.binder then
+        for _, action in ipairs(BinderActions) do
+            if action.isEnabled and action.isEnabled() then
+                local name = text:match(action.pattern)
+                if name then
+                    local template = binds[action.bindKey]
+                    if template then
+                        local msg = u8:decode(template):format(name)
+                        sampSendChat(msg)
+                    end
+                    break
+                end
+            end
         end
     end
 
@@ -1269,27 +1299,10 @@ function bind_cuff(param)
     if State.binder.v and Binder.cuff.v then
         lua_thread.create(function()
             local message = formatWithName(u8:decode(binds['cuff_text']), id)
-            handleBinderCommand(message, '/cuff')
+            handle_binder_cmd(message, '/cuff ', id)
         end)
     else
         sampSendChat('/cuff ' .. id)
-    end
-end
-
-function bind_follow_me(param)
-    local id = tonumber(param)
-    if not id then
-        sampAddChatMessage('{CCCCCC}[ Мысли ]: Вести за собой [ /fme ID ]', -1)
-        return
-    end
-
-    if State.binder.v and Binder.fme.v then
-        lua_thread.create(function()
-            local message = formatWithName(u8:decode(binds['fme_text']), id)
-            handle_binder_cmd(message, '/fme')
-        end)
-    else
-        sampSendChat('/fme ' .. id)
     end
 end
 
@@ -1302,45 +1315,11 @@ function bind_frisk(param)
 
     if State.binder.v and Binder.frisk.v then
         lua_thread.create(function()
-            local message = formatWithName(binds['frisk_text'], id)
-            handle_binder_cmd(message, '/frisk')
+            local message = formatWithName(u8:decode(binds['frisk_text']), id)
+            handle_binder_cmd(message, '/frisk ', id)
         end)
     else
         sampSendChat('/frisk ' .. id)
-    end
-end
-
-function bind_incar(param)
-    local id = tonumber(param)
-    if not id then
-        sampAddChatMessage('{CCCCCC}[ Мысли ]: Посадить в машину [ /incar ID ]', -1)
-        return
-    end
-
-    if State.binder.v and Binder.incar.v then
-        lua_thread.create(function()
-            local message = formatWithName(binds['incar_text'], id)
-            handle_binder_cmd(message, '/incar')
-        end)
-    else
-        sampSendChat('/incar ' .. id)
-    end
-end
-
-function bind_eject(param)
-    local id = tonumber(param)
-    if not id then
-        sampAddChatMessage('{CCCCCC}[ Мысли ]: Выкинуть из транспорта [ /eject ID ]', -1)
-        return
-    end
-
-    if State.binder.v and Binder.eject.v then
-        lua_thread.create(function()
-            local message = formatWithName(binds['eject_text'], id)
-            handle_binder_cmd(message, '/eject')
-        end)
-    else
-        sampSendChat('/eject ' .. id)
     end
 end
 
@@ -1353,8 +1332,8 @@ function bind_arest(param)
 
     if State.binder.v and Binder.arest.v then
         lua_thread.create(function()
-            local message = formatWithName(binds['arest_text'], id)
-            handle_binder_cmd(message, '/arest')
+            local message = formatWithName(u8:decode(binds['arest_text']), id)
+            handle_binder_cmd(message, '/arest ', id)
         end)
     else
         sampSendChat('/arest ' .. id)
@@ -1369,11 +1348,11 @@ function formatWithName(msg, arg)
     return (msg):format(name)
 end
 
-function handle_binder_cmd(msg, cmd)
-    if msg then
+function handle_binder_cmd(msg, cmd, id)
+    if msg and id then
         sampSendChat(msg)
         wait(500)
-        sampSendChat(cmd .. id)
+        sampSendChat(cmd .. tostring(id))
     else
         sampAddChatMessage("[Tools] {FFFFFF}Игрок не подключён.", State.main_color)
     end
