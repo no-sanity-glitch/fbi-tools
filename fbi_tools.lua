@@ -81,7 +81,8 @@ local mainIni = inicfg.load({
         main_menu = encodeJson({ vkeys.VK_F2 }),
         battlepass = encodeJson({ vkeys.VK_F3 }),
         backup = encodeJson({ vkeys.VK_U }),
-        su = encodeJson({ vkeys.VK_I })
+        su = encodeJson({ vkeys.VK_I }),
+        crosshair = encodeJson({ vkeys.VK_DELETE }),
     },
     state = {
         auto_alert = false,
@@ -136,7 +137,8 @@ local State = {
     blackout_textdraw_id = nil,
     statusSsMode = false,
     main_color = mainIni.config.intImGui,
-    skinSearch = imgui.ImBuffer(256)
+    skinSearch = imgui.ImBuffer(256),
+    crosshair_state = false,
 }
 
 local AutoAlert = {
@@ -184,7 +186,8 @@ local HotKeys = {
     main_menu = { v = decodeJson(mainIni.hotkeys.main_menu) },
     battlepass = { v = decodeJson(mainIni.hotkeys.battlepass) },
     backup = { v = decodeJson(mainIni.hotkeys.backup) },
-    su = { v = decodeJson(mainIni.hotkeys.su) }
+    su = { v = decodeJson(mainIni.hotkeys.su) },
+    crosshair = { v = decodeJson(mainIni.hotkeys.crosshair) },
 }
 
 local pearsSkins = {}
@@ -648,6 +651,7 @@ function registerHotkeys()
     ID_BATTLEPASS = rkeys.registerHotKey(HotKeys.battlepass.v, 1, battlepass)
     ID_BACKUP = rkeys.registerHotKey(HotKeys.backup.v, 1, backup)
     ID_SU = rkeys.registerHotKey(HotKeys.su.v, 1, su)
+    ID_CROSSHAIR = rkeys.registerHotKey(HotKeys.crosshair.v, 1, crosshair)
 end
 
 function initializeMainThread()
@@ -657,9 +661,27 @@ function initializeMainThread()
             handleStroboscopes()
             handleSkinChanger()
             handleAutoFix()
+            handleCrosshairHold()
             wait(0)
         end
     end)
+end
+
+function crosshair()
+    local weapon = getCurrentCharWeapon(PLAYER_PED)
+    if not isCharInAnyCar(PLAYER_PED) and weapon >= 22 and weapon <= 34 then
+        State.crosshair_state = not State.crosshair_state
+    end
+end
+
+function handleCrosshairHold()
+    local weapon = getCurrentCharWeapon(PLAYER_PED)
+    if State.crosshair_state and (weapon < 22 or weapon > 34) then
+        State.crosshair_state = false
+    end
+    if State.crosshair_state then
+        setGameKeyState(6, 255)
+    end
 end
 
 function handleAutoFix()
@@ -869,7 +891,7 @@ function sampev.onServerMessage(color, text)
     end
 
     -- Binder
-    if text and State.binder then
+    if text and State.binder.v then
         for _, action in ipairs(BinderActions) do
             if action.isEnabled and action.isEnabled() then
                 local name = text:match(action.pattern)
@@ -1625,6 +1647,7 @@ function menu_7()
         save()
     end
     imgui.SameLine()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 3)
     imgui.Text(u8 "Отыгровка наручников. /cuff")
     State.binder_cuff_text_buffer.v = binds['cuff_text']:gsub("%%s", "#name")
     imgui.PushItemWidth(-1)
@@ -1739,6 +1762,15 @@ function menu_9()
     if imgui.HotKey("##HotKeys.battlepass", HotKeys.battlepass) then
         rkeys.changeHotKey(ID_BATTLEPASS, HotKeys.battlepass.v)
         mainIni.hotkeys.battlepass = encodeJson(HotKeys.battlepass.v)
+        save()
+        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+    end
+    imgui.SameLine()
+    imgui.Text(u8 'Изменить кнопку активации Battle Pass')
+    -- crosshair hold
+    if imgui.HotKey("##HotKeys.crosshair", HotKeys.crosshair) then
+        rkeys.changeHotKey(ID_CROSSHAIR, HotKeys.crosshair.v)
+        mainIni.hotkeys.crosshair = encodeJson(HotKeys.crosshair.v)
         save()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
