@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.10')
+script_version('1.1.0')
 
 local CONFIG = {
     AUTO_UPDATE = true,
@@ -1118,7 +1118,7 @@ local changelog10 = [[
 12. Добавлен чёрный экран для ссок. /blackout
 13. Добавлен авто перенос в /d и /r.
 ]]
-local changelog20 = [[
+local changelog11 = [[
 1. Добавлена информационная панель Info Panel.
 2. Добавлены базовые отыгровки /cuff, /fme, /frisk, /incar, /eject, /arest.
 3. Добавлен скин ченджер.
@@ -1143,8 +1143,8 @@ function welcomeMenu()
 
     imgui.Separator()
 
-    if imgui.CollapsingHeader('Version 2.0.0') then
-        imgui.Text(u8(changelog20))
+    if imgui.CollapsingHeader('Version 1.1.0') then
+        imgui.Text(u8(changelog11))
     end
     if imgui.CollapsingHeader('Version 1.0.0') then
         imgui.Text(u8(changelog10))
