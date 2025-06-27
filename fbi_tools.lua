@@ -46,7 +46,7 @@ if enable_autoupdate then
             Update.json_url =
                 "https://raw.githubusercontent.com/no-sanity-glitch/fbi-tools/refs/heads/main/version.json?" ..
                 tostring(os.clock())
-            Update.prefix = "[" .. thisScript().name .. "]: "
+            Update.prefix = "{AC0046}[Tools]: "
             Update.url = "https://github.com/no-sanity-glitch/fbi-tools/"
         end
     end
@@ -86,12 +86,17 @@ local mainIni = inicfg.load({
         cruise_control_state = encodeJson({ vkeys.VK_NUMPAD8 }),
         cruise_control_speed_up = encodeJson({ vkeys.VK_MULTIPLY }),
         cruise_control_slow_down = encodeJson({ vkeys.VK_SUBTRACT }),
+        bindTazer = encodeJson({ vkeys.VK_B }),
+        bindBandage = encodeJson({ vkeys.VK_R }),
     },
     state = {
         auto_alert = false,
         auto_find = false,
         auto_fix = false,
         stroboscopes = false,
+        cfgBindBattlePass = false,
+        bindTazer = false,
+        bindBandage = false,
         binder = false,
         bind_cuff = false,
         bind_fme = false,
@@ -99,11 +104,26 @@ local mainIni = inicfg.load({
         bind_incar = false,
         bind_eject = false,
         bind_arest = false,
+    },
+    infopanel = {
+        infoPanel = false,
+        btnInfoPanel = false,
+        btnInfoPanelID = false,
+        btnInfoPanelCity = false,
+        btnInfoPanelZone = false,
+        btnInfoPanelPing = false,
+        btnInfoPanelFPS = false,
+        btnInfoPanelDateTime = false,
+
+        widgetInfoPanelPosX = 400,
+        widgetInfoPanelPosY = 400,
     }
 }, 'Tools')
 
 local json = getWorkingDirectory() .. '\\config\\fbi_tools_binds.json'
 local binds = {}
+
+local MoveWidgetInfoPanel = false
 
 function jsonSave(jsonFilePath, t)
     file = io.open(jsonFilePath, "w")
@@ -124,6 +144,9 @@ local State = {
     main_window = imgui.ImBool(false),
     CheckBoxDialogID = imgui.ImBool(false),
     straboscopes = imgui.ImBool(mainIni.state.stroboscopes),
+    bindBattlePass = imgui.ImBool(mainIni.state.cfgBindBattlePass),
+    bindTazer = imgui.ImBool(mainIni.state.bindTazer),
+    bindBandage = imgui.ImBool(mainIni.state.bindBandage),
     binder = imgui.ImBool(mainIni.state.binder),
     auto_alert_state = imgui.ImBool(mainIni.state.auto_alert),
     auto_alert_backup_text_buffer = imgui.ImBuffer(256),
@@ -142,6 +165,14 @@ local State = {
     main_color = mainIni.config.intImGui,
     skinSearch = imgui.ImBuffer(256),
     crosshair_state = false,
+
+    -- BINDS
+    show_cuff_text_edit = imgui.ImBool(false),
+    show_fme_text_edit = imgui.ImBool(false),
+    show_frisk_text_edit = imgui.ImBool(false),
+    show_incar_text_edit = imgui.ImBool(false),
+    show_eject_text_edit = imgui.ImBool(false),
+    show_arest_text_edit = imgui.ImBool(false),
 }
 
 local AutoAlert = {
@@ -175,6 +206,17 @@ local Binder = {
     arest = imgui.ImBool(mainIni.state.bind_arest),
 }
 
+local InfoPanel = {
+    infoPanel = imgui.ImBool(mainIni.infopanel.infoPanel),
+    btnInfoPanel = imgui.ImBool(mainIni.infopanel.btnInfoPanel),
+    btnInfoPanelID = imgui.ImBool(mainIni.infopanel.btnInfoPanelID),
+    btnInfoPanelCity = imgui.ImBool(mainIni.infopanel.btnInfoPanelCity),
+    btnInfoPanelZone = imgui.ImBool(mainIni.infopanel.btnInfoPanelZone),
+    btnInfoPanelPing = imgui.ImBool(mainIni.infopanel.btnInfoPanelPing),
+    btnInfoPanelFPS = imgui.ImBool(mainIni.infopanel.btnInfoPanelFPS),
+    btnInfoPanelDateTime = imgui.ImBool(mainIni.infopanel.btnInfoPanelDateTime),
+}
+
 local SkinChanger = {
     selectedSkin = mainIni.config.skin
 }
@@ -199,6 +241,8 @@ local HotKeys = {
     cruise_control_state = { v = decodeJson(mainIni.hotkeys.cruise_control_state) },
     cruise_control_speed_up = { v = decodeJson(mainIni.hotkeys.cruise_control_speed_up) },
     cruise_control_slow_down = { v = decodeJson(mainIni.hotkeys.cruise_control_slow_down) },
+    bindTazer = { v = decodeJson(mainIni.hotkeys.bindTazer) },
+    bindBandage = { v = decodeJson(mainIni.hotkeys.bindBandage) },
 }
 
 local pearsSkins = {}
@@ -607,15 +651,13 @@ function main()
         pcall(Update.check, Update.json_url, Update.prefix, Update.url)
     end
 
+    updateFPS()
     loadBinds()
     loadPearsLauncherSkins()
     concatSkins()
     registerChatCommands()
     registerHotkeys()
     initializeMainThread()
-
-    sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Активирован.", -1)
-    sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Открыть меню - {AC0046}/tt", -1)
 end
 
 function registerChatCommands()
@@ -662,6 +704,8 @@ function registerHotkeys()
     ID_BATTLEPASS = rkeys.registerHotKey(HotKeys.battlepass.v, 1, battlepass)
     ID_BACKUP = rkeys.registerHotKey(HotKeys.backup.v, 1, backup)
     ID_SU = rkeys.registerHotKey(HotKeys.su.v, 1, su)
+    ID_BINDTAZER = rkeys.registerHotKey(HotKeys.bindTazer.v, 1, bindTazer)
+    ID_BINDBANDAGE = rkeys.registerHotKey(HotKeys.bindBandage.v, 1, bindBandage)
     ID_CROSSHAIR = rkeys.registerHotKey(HotKeys.crosshair.v, 1, crosshair)
     ID_CRUISE_CONTROL_STATE = rkeys.registerHotKey(HotKeys.cruise_control_state.v, 1, cruiseControlState)
     ID_CRUISE_CONTROL_SPEED_UP = rkeys.registerHotKey(HotKeys.cruise_control_speed_up.v, 1, function()
@@ -682,8 +726,11 @@ function cruiseControlState()
 end
 
 function initializeMainThread()
+    sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Активирован.", -1)
+    sampAddChatMessage("{AC0046}[Tools] {FFFFFF}Открыть меню - {AC0046}/tt", -1)
     while true do
-        imgui.Process = State.main_window.v
+        imgui.Process = State.main_window.v or InfoPanel.infoPanel.v
+        if InfoPanel.infoPanel.v then imgui.ShowCursor = false end
         lua_thread.create(handleStroboscopes)
         lua_thread.create(handleSkinChanger)
         lua_thread.create(handleAutoFix)
@@ -696,7 +743,7 @@ end
 function handleCruiseControl()
     if isCharInAnyCar(playerPed) and CruiseControl.state then
         if getCarSpeed(storeCarCharIsInNoSave(playerPed)) < CruiseControl.speed then
-            writeMemory(0xB73458 + 0x20, 1, 255, false)
+            writeMemory(0xB73458 + 0x20, 1, 150, false)
         end
     end
 end
@@ -867,6 +914,15 @@ function getMyNick()
     end
 end
 
+function getMyNickSpec()
+    local result, id = sampGetPlayerIdByCharHandle(playerPed)
+    if result then
+        local nick = sampGetPlayerNickname(id)
+        nick = nick:gsub("_", " ")
+        return nick
+    end
+end
+
 function mainMenu()
     if sampIsChatInputActive() or sampIsDialogActive() then return end
     State.main_window.v = not State.main_window.v
@@ -874,8 +930,24 @@ function mainMenu()
 end
 
 function battlepass()
-    if sampIsChatInputActive() or sampIsDialogActive() then return end
-    sampSendChat("/battlepass")
+    if State.bindBattlePass.v then
+        if sampIsChatInputActive() or sampIsDialogActive() then return end
+        sampSendChat("/battlepass")
+    end
+end
+
+function bindTazer()
+    if State.bindTazer.v then
+        if sampIsChatInputActive() or sampIsDialogActive() then return end
+        sampSendChat("/tazer")
+    end
+end
+
+function bindBandage()
+    if State.bindBandage.v then
+        if sampIsChatInputActive() or sampIsDialogActive() then return end
+        sampSendChat("/bandage")
+    end
 end
 
 function cmdSetWeather(param)
@@ -1045,23 +1117,35 @@ local changelog10 = [[
 11. Добавлено автообновление скрипта.
 12. Добавлен чёрный экран для ссок. /blackout
 13. Добавлен авто перенос в /d и /r.
-14. Добавлены базовые отыгровки /cuff, /fme, /frisk, /incar, /eject, /arest.
-15. Добавлен скин ченджер.
+]]
+local changelog20 = [[
+1. Добавлена информационная панель Info Panel.
+2. Добавлены базовые отыгровки /cuff, /fme, /frisk, /incar, /eject, /arest.
+3. Добавлен скин ченджер.
+4. Добавлен бинд для електрошокера /tazer.
+5. Добалвен бинд для бинтов /bandage.
+6. Добавлен круиз-контроль.
+7. Добавлена задержка прицела для отыгровок.
 ]]
 
 local authors = [[
 
     Спасибо за помощь:
-    — Dave Grand (красивая imgui менюшка, стробоскопы, смена погоды);
+
     — Amelia Brown (режим IC-only чата и его очистка).
 ]]
 
 function welcomeMenu()
-    imgui.CenterText('' .. thisScript().name .. u8 ' | v' .. thisScript().version .. ' | Developers - Saburo Arasaka')
+    imgui.CenterText('' ..
+        thisScript().name .. u8 ' | v' .. thisScript().version .. ' | Developers - Saburo Arasaka & Dave Grand')
     imgui.CenterText(u8 'Разработан специально для Pears Project')
     imgui.Text(u8(authors))
 
     imgui.Separator()
+
+    if imgui.CollapsingHeader('Version 2.0.0') then
+        imgui.Text(u8(changelog20))
+    end
     if imgui.CollapsingHeader('Version 1.0.0') then
         imgui.Text(u8(changelog10))
     end
@@ -1131,8 +1215,30 @@ function issueWanted(attackerId)
 end
 
 function getZoneName()
+    local interior = getActiveInterior()
+    if interior ~= 0 then
+        return u8 "Вы в интерьере"
+    end
+
     local x, y, z = getCharCoordinates(PLAYER_PED)
     return calculateZone(x, y, z)
+end
+
+function getMyCity()
+    local x, y, z = getCharCoordinates(PLAYER_PED)
+
+    -- Las Venturas
+    if x > 869 and y > 596 then
+        return "Las Venturas"
+        -- San Fierro
+    elseif x < -700 and y > 0 then
+        return "San Fierro"
+        -- Los Santos
+    elseif x > 44 and y < -300 then
+        return "Los Santos"
+    else
+        return u8 "Вне города"
+    end
 end
 
 -- Auto Find
@@ -1417,6 +1523,8 @@ end
 function imgui.OnDrawFrame()
     setColorScheme()
     if State.main_window.v then renderMainWindow() end
+
+    if InfoPanel.infoPanel.v then renderInfoPanel() end
 end
 
 function setColorScheme()
@@ -1464,6 +1572,7 @@ function renderMainWindow()
     imgui.SetNextWindowSize(imgui.ImVec2(745, 450), imgui.Cond.FirstUseEver)
     imgui.Begin('' .. thisScript().name .. ' | v.' .. thisScript().version .. '', State.main_window,
         imgui.WindowFlags.NoResize + imgui.WindowFlags.NoCollapse)
+    imgui.ShowCursor = true
 
     renderLeftPanel()
     imgui.SameLine()
@@ -1479,9 +1588,9 @@ function renderLeftPanel()
         { text = u8 'Основное', menu = 1 },
         { text = u8 'Auto Alert', menu = 2 },
         { text = u8 'Auto Find', menu = 3 },
-        { text = u8 'Auto Fix (experimental)', menu = 4 },
+        { text = u8 'Круиз Контроль', menu = 4 },
         { text = u8 'Skin Changer', menu = 5 },
-        { text = u8 'SS Tools', menu = 6 },
+        { text = u8 'Info Panel', menu = 6 },
         { text = u8 'Биндер', menu = 7 },
         { text = u8 'Спец.Клавиши', menu = 9 },
         { text = u8 'Настройки', menu = 10 }
@@ -1520,9 +1629,123 @@ function renderRightPanel()
     imgui.EndChild()
 end
 
+function getMyId()
+    local result, id = sampGetPlayerIdByCharHandle(playerPed)
+    if result then
+        return id
+    end
+end
+
+function getMyPing()
+    local result, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+    if result then
+        return sampGetPlayerPing(id)
+    end
+    return nil
+end
+
+-------------GetMyFPS---------------
+local currentFPS = 0
+local lastTick = 0
+local frameCounter = 0
+
+function updateFPS()
+    lua_thread.create(function()
+        while true do
+            wait(0)
+            frameCounter = frameCounter + 1
+            local now = os.clock()
+            if now - lastTick >= 1 then
+                currentFPS = frameCounter
+                frameCounter = 0
+                lastTick = now
+            end
+        end
+    end)
+end
+
+function getMyFPS()
+    return currentFPS
+end
+
+-------------------------------------
+
+
+function renderInfoPanel()
+    if InfoPanel.btnInfoPanel.v then
+        if InfoPanel.infoPanel.v then
+            imgui.SetNextWindowPos(
+                imgui.ImVec2(mainIni.infopanel.widgetInfoPanelPosX, mainIni.infopanel.widgetInfoPanelPosY), imgui.Cond
+                .Always)
+            imgui.Begin(u8 "##InfoPanel", InfoPanel.infoPanel,
+                imgui.WindowFlags.NoMove + imgui.WindowFlags.NoCollapse + imgui.WindowFlags.AlwaysAutoResize +
+                imgui.WindowFlags.ShowBorders + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoTitleBar)
+
+            if MoveWidgetInfoPanel then
+                sampSetCursorMode(2)
+
+                local cx, cy = getCursorPos()
+                mainIni.infopanel.widgetInfoPanelPosX = cx
+                mainIni.infopanel.widgetInfoPanelPosY = cy
+
+                if imgui.IsMouseClicked(0) then
+                    MoveWidgetInfoPanel = false
+                    State.main_window.v = true
+                    sampSetCursorMode(0)
+                    save()
+                    sampAddChatMessage('{AC0046}[Tools] {FFFFFF}Позиция закреплена.', -1)
+                end
+            end
+
+            imgui.CenterText(u8 "FBI Tools")
+            imgui.Separator()
+            if InfoPanel.btnInfoPanelID and InfoPanel.btnInfoPanelCity and InfoPanel.btnInfoPanelZone and InfoPanel.btnInfoPanelPing then
+                if InfoPanel.btnInfoPanelID.v then
+                    imgui.CenterText(fa.ICON_USER_CIRCLE ..
+                        u8 " " .. getMyNickSpec() .. " [" .. getMyId() .. "]")
+                else
+                    imgui.CenterText(fa.ICON_USER ..
+                        u8 " " .. getMyNickSpec())
+                end
+                if InfoPanel.btnInfoPanelCity.v then imgui.CenterText(fa.ICON_MAP_MARKER .. u8 " " .. getMyCity()) end
+                if InfoPanel.btnInfoPanelZone.v then imgui.CenterText(u8 " " .. getZoneName()) end
+                if InfoPanel.btnInfoPanelPing.v or InfoPanel.btnInfoPanelFPS.v then
+                    local ping_fps_text = ''
+                    if InfoPanel.btnInfoPanelPing.v then
+                        ping_fps_text = ping_fps_text .. fa.ICON_RSS .. u8 " " .. getMyPing()
+                    end
+                    if InfoPanel.btnInfoPanelPing.v and InfoPanel.btnInfoPanelFPS.v then
+                        ping_fps_text = ping_fps_text .. u8 " | "
+                    end
+                    if InfoPanel.btnInfoPanelFPS.v then
+                        ping_fps_text = ping_fps_text .. fa.ICON_TACHOMETER .. u8 " " .. getMyFPS()
+                    end
+                    local winWidth = imgui.GetWindowSize().x
+                    local textWidth = imgui.CalcTextSize(ping_fps_text).x
+                    imgui.SetCursorPosX((winWidth - textWidth) / 2)
+                    imgui.Text(ping_fps_text)
+                end
+                if InfoPanel.btnInfoPanelDateTime.v then
+                    imgui.Separator()
+                    imgui.CenterText(os.date("%d.%m.%y | %H:%M:%S"))
+                end
+                if CruiseControl.state then
+                    imgui.Separator()
+                    imgui.CenterText(u8("Скорость круиза: %.0f"):format(CruiseControl.speed * 2))
+                end
+            else
+                imgui.Text(u8 "Функции отключены")
+            end
+            imgui.End()
+        end
+    end
+end
+
 function menu_1()
-    imgui.CenterText(u8 'Добро пожаловать, ' .. getMyNick())
+    imgui.CenterText(u8 'Добро пожаловать, ' .. getMyNickSpec())
     imgui.Separator()
+
+    --STROBES
     if imadd.ToggleButton("##straboscopes", State.straboscopes) then
         if State.straboscopes.v then
             sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {01DF01}включены{ffffff}.", State.main_color)
@@ -1538,6 +1761,78 @@ function menu_1()
     imgui.Text(u8 "Стробоскопы")
     imgui.SameLine()
     imgui.HelpMarker(u8 "Активация сирены /strobes | Активация стробоскопов P")
+
+    -- BATTLEPASS
+    if imadd.ToggleButton("##bindBattlePass", State.bindBattlePass) then
+        if State.bindBattlePass.v then
+            sampAddChatMessage("[Tools] {FFFFFF}Бинд для BattlePass {01DF01}включен{ffffff}.", State.main_color)
+            mainIni.state.cfgBindBattlePass = true
+            save()
+        else
+            sampAddChatMessage("[Tools] {FFFFFF}Бинд для BattlePass {ff0000}отключен{ffffff}.", State.main_color)
+            mainIni.state.cfgBindBattlePass = false
+            save()
+        end
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Бинд для BattlePass'a")
+    imgui.SameLine()
+    imgui.HelpMarker(u8 "Бинд настроить можно в разделе 'Спец.Клавиши' | Стандартный бинд F3")
+
+    -- TAZER
+    if imadd.ToggleButton("##bindTazer", State.bindTazer) then
+        if State.bindTazer.v then
+            sampAddChatMessage("[Tools] {FFFFFF}Бинд для електрошокера {01DF01}включен{ffffff}.", State.main_color)
+            mainIni.state.bindTazer = true
+            save()
+        else
+            sampAddChatMessage("[Tools] {FFFFFF}Бинд для електрошокера {ff0000}отключен{ffffff}.", State.main_color)
+            mainIni.state.bindTazer = false
+            save()
+        end
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Бинд для електрошокера")
+    imgui.SameLine()
+    imgui.HelpMarker(u8 "Бинд настроить можно в разделе 'Спец.Клавиши' | Стандартный бинд B")
+
+    -- BANDAGE
+    if imadd.ToggleButton("##bindBandage", State.bindBandage) then
+        if State.bindBandage.v then
+            sampAddChatMessage("[Tools] {FFFFFF}Бинд для использования бинта {01DF01}включен{ffffff}.", State.main_color)
+            mainIni.state.bindBandage = true
+            save()
+        else
+            sampAddChatMessage("[Tools] {FFFFFF}Бинд для использования бинта {ff0000}отключен{ffffff}.", State
+                .main_color)
+            mainIni.state.bindBandage = false
+            save()
+        end
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Бинд для использования бинта")
+    imgui.SameLine()
+    imgui.HelpMarker(u8 "Бинд настроить можно в разделе 'Спец.Клавиши' | Стандартный бинд R")
+
+    -- AUTOFIXCAR
+    if imadd.ToggleButton("##auto_fix_state", State.auto_fix_state) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Автопочинка " ..
+            (State.auto_fix_state.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
+        mainIni.state.auto_fix = State.auto_fix_state.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Автопочинка и автозаправка")
+    imgui.SameLine()
+    imgui.HelpMarker(u8 "Автопочинка и автозаправка в гос.гаражах. Для починки нужно заглушить двигатель.")
+
+    -- SS TOOLS
+    if imgui.CollapsingHeader('SS Tools') then
+        imgui.Text(u8 "/ss - только IC чат (удаление ad, админских строк, PayDay, /r, /d, OOC чатов).")
+        imgui.Text(u8 "/сс - очистить чат.")
+        imgui.Text(u8 "/blackout - чёрный экран.")
+    end
 
     if imgui.Button(u8 'Перезагрузить скрипт', ImVec2(490, 0)) then
         sampAddChatMessage('[Tools] {FFFFFF}Перезагрузка...', State.main_color)
@@ -1619,24 +1914,40 @@ function menu_3()
 end
 
 function menu_4()
-    if imadd.ToggleButton("##auto_fix_state", State.auto_fix_state) then
-        sampAddChatMessage(
-            "[Tools] {FFFFFF}Автопочинка " ..
-            (State.auto_fix_state.v and "{01DF01}включена" or "{ff0000}отключена") .. "{ffffff}.", State.main_color)
-        mainIni.state.auto_fix = State.auto_fix_state.v
+    imgui.CenterText(u8 "Круиз Контроль")
+    imgui.Separator() -- cruise control state
+    if imgui.HotKey("##HotKeys.cruise_control_state", HotKeys.cruise_control_state) then
+        rkeys.changeHotKey(ID_CRUISE_CONTROL_STATE, HotKeys.cruise_control_state.v)
+        mainIni.hotkeys.cruise_control_state = encodeJson(HotKeys.cruise_control_state.v)
         save()
+        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
-    imgui.Text(u8 "Автопочинка и автозаправка")
+    imgui.Text(u8 'Изменить кнопку активации круиз контроля')
+    -- cruise control speed up
+    if imgui.HotKey("##HotKeys.cruise_control_speed_up", HotKeys.cruise_control_speed_up) then
+        rkeys.changeHotKey(ID_CRUISE_CONTROL_SPEED_UP, HotKeys.cruise_control_speed_up.v)
+        mainIni.hotkeys.cruise_control_speed_up = encodeJson(HotKeys.cruise_control_speed_up.v)
+        save()
+        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+    end
     imgui.SameLine()
-    imgui.HelpMarker(u8 "Автопочинка и автозаправка в гос.гаражах. Для починки нужно заглушить двигатель.")
+    imgui.Text(u8 'Изменить кнопку увеличения скорости круиза')
+    -- cruise control slow down
+    if imgui.HotKey("##HotKeys.cruise_control_slow_down", HotKeys.cruise_control_slow_down) then
+        rkeys.changeHotKey(ID_CRUISE_CONTROL_SLOW_DOWN, HotKeys.cruise_control_slow_down.v)
+        mainIni.hotkeys.cruise_control_slow_down = encodeJson(HotKeys.cruise_control_slow_down.v)
+        save()
+        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+    end
+    imgui.SameLine()
+    imgui.Text(u8 'Изменить кнопку уменьшения скорости круиза')
 end
 
 function menu_5()
-    imgui.Text(u8 "Визуальная смена скина")
+    imgui.CenterText(u8 "Визуальная смена скина")
     imgui.Separator()
-    imgui.Text(u8 'Поиск:')
-    imgui.InputText(u8 '', State.skinSearch)
+    imgui.InputText(u8 'Поиск ##skin_search', State.skinSearch)
     if imgui.Selectable(u8 'Выкл', SkinChanger.selectedSkin == 0) then
         SkinChanger.selectedSkin = 0
         apply()
@@ -1654,9 +1965,106 @@ function menu_5()
 end
 
 function menu_6()
-    imgui.Text(u8 "/ss - только IC чат (удаление ad, админских строк, PayDay, /r, /d, OOC чатов).")
-    imgui.Text(u8 "/сс - очистить чат.")
-    imgui.Text(u8 "/blackout - чёрный экран.")
+    imgui.CenterText(u8 "Информационная панель")
+    imgui.Separator()
+
+    if InfoPanel.btnInfoPanel.v then
+        if imgui.Button(u8 "Изменить координаты статистики", imgui.ImVec2(490, 0)) then
+            State.main_window.v = false
+            MoveWidgetInfoPanel = true
+            sampSetCursorMode(2)
+            sampAddChatMessage('{AC0046}[Tools] {FFFFFF}Чтобы подтвердить местоположение - нажмите {FFA500}ЛКМ{FFFFFF}.',
+                -1)
+        end
+    else
+        imgui.Text(" ")
+    end
+
+    imgui.Columns(2, "info_columns", true)
+    imgui.SetColumnWidth(0, 60)
+    imgui.SetColumnWidth(1, 500)
+    imgui.Text(u8 "    " .. fa.ICON_POWER_OFF)
+    imgui.NextColumn()
+    imgui.CenterText(u8 "Описание")
+    imgui.NextColumn()
+    imgui.Separator()
+
+    if imadd.ToggleButton(u8 '##infoPanel', InfoPanel.btnInfoPanel) then
+        -- mainIni.infopanel.btnInfoPanel = InfoPanel.btnInfoPanel.v
+        -- save()
+        -- mainIni.infopanel.infoPanel = not InfoPanel.infoPanel.v
+        local newState = InfoPanel.btnInfoPanel.v
+        InfoPanel.infoPanel.v = newState -- синхронизируем сразу
+
+        mainIni.infopanel.btnInfoPanel = newState
+        mainIni.infopanel.infoPanel = newState
+        save()
+    end
+    imgui.NextColumn()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
+    imgui.Text(u8 "Информационная панель")
+    imgui.NextColumn()
+    imgui.Separator()
+
+    if imadd.ToggleButton(u8 '##btnInfoPanelID', InfoPanel.btnInfoPanelID) then
+        mainIni.infopanel.btnInfoPanelID = InfoPanel.btnInfoPanelID.v
+        save()
+    end
+    imgui.NextColumn()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
+    imgui.Text(u8 "Показывать ID")
+    imgui.NextColumn()
+    imgui.Separator()
+
+    if imadd.ToggleButton(u8 '##btnInfoPanelCity', InfoPanel.btnInfoPanelCity) then
+        mainIni.infopanel.btnInfoPanelCity = InfoPanel.btnInfoPanelCity.v
+        save()
+    end
+    imgui.NextColumn()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
+    imgui.Text(u8 "Показывать текущий город")
+    imgui.NextColumn()
+    imgui.Separator()
+
+    if imadd.ToggleButton(u8 '##btnInfoPanelZone', InfoPanel.btnInfoPanelZone) then
+        mainIni.infopanel.btnInfoPanelZone = InfoPanel.btnInfoPanelZone.v
+        save()
+    end
+    imgui.NextColumn()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
+    imgui.Text(u8 "Показывать текущий район")
+    imgui.NextColumn()
+    imgui.Separator()
+
+    if imadd.ToggleButton(u8 '##btnInfoPanelPing', InfoPanel.btnInfoPanelPing) then
+        mainIni.infopanel.btnInfoPanelPing = InfoPanel.btnInfoPanelPing.v
+        save()
+    end
+    imgui.NextColumn()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
+    imgui.Text(u8 "Показывать текущий пинг")
+    imgui.NextColumn()
+    imgui.Separator()
+
+    if imadd.ToggleButton(u8 '##btnInfoPanelFPS', InfoPanel.btnInfoPanelFPS) then
+        mainIni.infopanel.btnInfoPanelFPS = InfoPanel.btnInfoPanelFPS.v
+        save()
+    end
+    imgui.NextColumn()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
+    imgui.Text(u8 "Показывать текущий ФПС")
+    imgui.NextColumn()
+    imgui.Separator()
+
+    if imadd.ToggleButton(u8 '##btnInfoPanelDateTime', InfoPanel.btnInfoPanelDateTime) then
+        mainIni.infopanel.btnInfoPanelDateTime = InfoPanel.btnInfoPanelDateTime.v
+        save()
+    end
+    imgui.NextColumn()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
+    imgui.Text(u8 "Показывать текущую дату и время")
+    imgui.Columns(1)
+    imgui.Separator()
 end
 
 function menu_7()
@@ -1670,9 +2078,25 @@ function menu_7()
         save()
     end
     imgui.SameLine()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Биндер")
     imgui.SameLine()
     imgui.HelpMarker(u8 "Впишите вашу отыгровку или оставьте как есть, #name заменяется на имя человека id которого вы вписали.")
+
+    -- TABLE 3 COLUMNS
+    imgui.Columns(3, "binds_columns", true) -- true — для видимых разделителей
+    imgui.SetColumnWidth(0, 60)             -- первая колонка, например, 80px
+    imgui.SetColumnWidth(1, 390)            -- вторая колонка, 300px
+    imgui.SetColumnWidth(2, 60)
+
+    imgui.Text(u8 "    " .. fa.ICON_POWER_OFF)
+    imgui.NextColumn()
+    imgui.Text(u8 "Описание")
+    imgui.NextColumn()
+    imgui.Text(u8 "Редакт.")
+    imgui.NextColumn()
+    imgui.Separator()
+
     if imadd.ToggleButton("##bindcuff", Binder.cuff) then
         sampAddChatMessage(
             "[Tools] {FFFFFF}Отыгровка наручников " ..
@@ -1680,17 +2104,27 @@ function menu_7()
         mainIni.state.bind_cuff = Binder.cuff.v
         save()
     end
-    imgui.SameLine()
-    imgui.SetCursorPosY(imgui.GetCursorPosY() + 3)
+    imgui.NextColumn()
+
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка наручников. /cuff")
-    State.binder_cuff_text_buffer.v = binds['cuff_text']:gsub("%%s", "#name")
-    imgui.PushItemWidth(-1)
-    if imgui.InputText('##binder_cuff_text_buffer', State.binder_cuff_text_buffer) then
-        local text = State.binder_cuff_text_buffer.v:gsub("#name", "%%s")
-        binds['cuff_text'] = text
-        save()
+    if State.show_cuff_text_edit.v then
+        State.binder_cuff_text_buffer.v = binds['cuff_text']:gsub("%%s", "#name")
+        imgui.PushItemWidth(-1)
+        if imgui.InputText('##binder_cuff_text_buffer', State.binder_cuff_text_buffer) then
+            local text = State.binder_cuff_text_buffer.v:gsub("#name", "%%s")
+            binds['cuff_text'] = text
+            save()
+        end
+        imgui.PopItemWidth()
     end
-    imgui.PopItemWidth()
+    imgui.NextColumn()
+
+    if imgui.Button(fa.ICON_PENCIL .. "##editcuff", "##bindcuff_edit_button", ImVec2(30, 0)) then
+        State.show_cuff_text_edit.v = not State.show_cuff_text_edit.v
+    end
+    imgui.NextColumn()
+    imgui.Separator()
 
     if imadd.ToggleButton("##bindfme", Binder.fme) then
         sampAddChatMessage(
@@ -1699,15 +2133,25 @@ function menu_7()
         mainIni.state.bind_fme = Binder.fme.v
         save()
     end
-    imgui.SameLine()
+    imgui.NextColumn()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка вести за собой. /fme")
-    State.binder_fme_text_buffer.v = binds['fme_text']:gsub("%%s", "#name")
-    imgui.PushItemWidth(-1)
-    if imgui.InputText('##binder_fme_text_buffer', State.binder_fme_text_buffer) then
-        binds['fme_text'] = State.binder_fme_text_buffer.v:gsub("#name", "%%s")
-        save()
+    if State.show_fme_text_edit.v then
+        State.binder_fme_text_buffer.v = binds['fme_text']:gsub("%%s", "#name")
+        imgui.PushItemWidth(-1)
+        if imgui.InputText('##binder_fme_text_buffer', State.binder_fme_text_buffer) then
+            binds['fme_text'] = State.binder_fme_text_buffer.v:gsub("#name", "%%s")
+            save()
+        end
+        imgui.PopItemWidth()
     end
-    imgui.PopItemWidth()
+    imgui.NextColumn()
+
+    if imgui.Button(u8 "" .. fa.ICON_PENCIL .. "##bindfme_edit_button") then
+        State.show_fme_text_edit.v = not State.show_fme_text_edit.v
+    end
+    imgui.NextColumn()
+    imgui.Separator()
 
     if imadd.ToggleButton("##bindfrisk", Binder.frisk) then
         sampAddChatMessage(
@@ -1716,16 +2160,27 @@ function menu_7()
         mainIni.state.bind_frisk = Binder.frisk.v
         save()
     end
-    imgui.SameLine()
+    imgui.NextColumn()
+
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка обыска. /frisk")
-    State.binder_frisk_text_buffer.v = binds['frisk_text']:gsub("%%s", "#name")
-    imgui.PushItemWidth(-1)
-    if imgui.InputText('##binder_frisk_text_buffer', State.binder_frisk_text_buffer) then
-        local text = State.binder_frisk_text_buffer.v:gsub("#name", "%%s")
-        binds['frisk_text'] = text
-        save()
+    if State.show_frisk_text_edit.v then
+        State.binder_frisk_text_buffer.v = binds['frisk_text']:gsub("%%s", "#name")
+        imgui.PushItemWidth(-1)
+        if imgui.InputText('##binder_frisk_text_buffer', State.binder_frisk_text_buffer) then
+            local text = State.binder_frisk_text_buffer.v:gsub("#name", "%%s")
+            binds['frisk_text'] = text
+            save()
+        end
+        imgui.PopItemWidth()
     end
-    imgui.PopItemWidth()
+    imgui.NextColumn()
+
+    if imgui.Button(u8 "" .. fa.ICON_PENCIL .. "##bindfrisk_edit_button") then
+        State.show_frisk_text_edit.v = not State.show_frisk_text_edit.v
+    end
+    imgui.NextColumn()
+    imgui.Separator()
 
     if imadd.ToggleButton("##bindincar", Binder.incar) then
         sampAddChatMessage(
@@ -1734,16 +2189,27 @@ function menu_7()
         mainIni.state.bind_incar = Binder.incar.v
         save()
     end
-    imgui.SameLine()
+    imgui.NextColumn()
+
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка /incar")
-    State.binder_incar_text_buffer.v = binds['incar_text']:gsub("%%s", "#name")
-    imgui.PushItemWidth(-1)
-    if imgui.InputText('##binder_incar_text_buffer', State.binder_incar_text_buffer) then
-        local text = State.binder_incar_text_buffer.v:gsub("#name", "%%s")
-        binds['incar_text'] = text
-        save()
+    if State.show_incar_text_edit.v then
+        State.binder_incar_text_buffer.v = binds['incar_text']:gsub("%%s", "#name")
+        imgui.PushItemWidth(-1)
+        if imgui.InputText('##binder_incar_text_buffer', State.binder_incar_text_buffer) then
+            local text = State.binder_incar_text_buffer.v:gsub("#name", "%%s")
+            binds['incar_text'] = text
+            save()
+        end
+        imgui.PopItemWidth()
     end
-    imgui.PopItemWidth()
+    imgui.NextColumn()
+
+    if imgui.Button(u8 "" .. fa.ICON_PENCIL .. "##bindincar_edit_button") then
+        State.show_incar_text_edit.v = not State.show_incar_text_edit.v
+    end
+    imgui.NextColumn()
+    imgui.Separator()
 
     if imadd.ToggleButton("##bindeject", Binder.eject) then
         sampAddChatMessage(
@@ -1752,16 +2218,26 @@ function menu_7()
         mainIni.state.bind_eject = Binder.eject.v
         save()
     end
-    imgui.SameLine()
+    imgui.NextColumn()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка /eject")
-    State.binder_eject_text_buffer.v = binds['eject_text']:gsub("%%s", "#name")
-    imgui.PushItemWidth(-1)
-    if imgui.InputText('##binder_eject_text_buffer', State.binder_eject_text_buffer) then
-        local text = State.binder_eject_text_buffer.v:gsub("#name", "%%s")
-        binds['eject_text'] = text
-        save()
+    if State.show_eject_text_edit.v then
+        State.binder_eject_text_buffer.v = binds['eject_text']:gsub("%%s", "#name")
+        imgui.PushItemWidth(-1)
+        if imgui.InputText('##binder_eject_text_buffer', State.binder_eject_text_buffer) then
+            local text = State.binder_eject_text_buffer.v:gsub("#name", "%%s")
+            binds['eject_text'] = text
+            save()
+        end
+        imgui.PopItemWidth()
     end
-    imgui.PopItemWidth()
+
+    imgui.NextColumn()
+    if imgui.Button(u8 "" .. fa.ICON_PENCIL .. "##bindeject_edit_button") then
+        State.show_eject_text_edit.v = not State.show_eject_text_edit.v
+    end
+    imgui.NextColumn()
+    imgui.Separator()
 
     if imadd.ToggleButton("##bindarest", Binder.arest) then
         sampAddChatMessage(
@@ -1770,16 +2246,25 @@ function menu_7()
         mainIni.state.bind_arest = Binder.arest.v
         save()
     end
-    imgui.SameLine()
+    imgui.NextColumn()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка /arest")
-    State.binder_arest_text_buffer.v = binds['arest_text']:gsub("%%s", "#name")
-    imgui.PushItemWidth(-1)
-    if imgui.InputText('##binder_arest_text_buffer', State.binder_arest_text_buffer) then
-        local text = State.binder_arest_text_buffer.v:gsub("#name", "%%s")
-        binds['arest_text'] = text
-        save()
+    if State.show_arest_text_edit.v then
+        State.binder_arest_text_buffer.v = binds['arest_text']:gsub("%%s", "#name")
+        imgui.PushItemWidth(-1)
+        if imgui.InputText('##binder_arest_text_buffer', State.binder_arest_text_buffer) then
+            local text = State.binder_arest_text_buffer.v:gsub("#name", "%%s")
+            binds['arest_text'] = text
+            save()
+        end
+        imgui.PopItemWidth()
     end
-    imgui.PopItemWidth()
+    imgui.NextColumn()
+    if imgui.Button(u8 "" .. fa.ICON_PENCIL .. "##bindarest_edit_button") then
+        State.show_arest_text_edit.v = not State.show_arest_text_edit.v
+    end
+    imgui.Columns(1) -- закрытие таблицы
+    imgui.Separator()
 end
 
 function menu_9()
@@ -1810,39 +2295,31 @@ function menu_9()
     end
     imgui.SameLine()
     imgui.Text(u8 'Изменить кнопку активации задержки прицела')
-    -- cruise control state
-    if imgui.HotKey("##HotKeys.cruise_control_state", HotKeys.cruise_control_state) then
-        rkeys.changeHotKey(ID_CRUISE_CONTROL_STATE, HotKeys.cruise_control_state.v)
-        mainIni.hotkeys.cruise_control_state = encodeJson(HotKeys.cruise_control_state.v)
+    -- tazer
+    if imgui.HotKey("##HotKeys.bindTazer", HotKeys.bindTazer) then
+        rkeys.changeHotKey(ID_BINDTAZER, HotKeys.bindTazer.v)
+        mainIni.hotkeys.bindTazer = encodeJson(HotKeys.bindTazer.v)
         save()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
-    imgui.Text(u8 'Изменить кнопку активации круиз контроля')
-    -- cruise control speed up
-    if imgui.HotKey("##HotKeys.cruise_control_speed_up", HotKeys.cruise_control_speed_up) then
-        rkeys.changeHotKey(ID_CRUISE_CONTROL_SPEED_UP, HotKeys.cruise_control_speed_up.v)
-        mainIni.hotkeys.cruise_control_speed_up = encodeJson(HotKeys.cruise_control_speed_up.v)
+    imgui.Text(u8 'Изменить кнопку активации електрошокера')
+    -- bandage
+    if imgui.HotKey("##HotKeys.bindBandage", HotKeys.bindBandage) then
+        rkeys.changeHotKey(ID_BINDBANDAGE, HotKeys.bindBandage.v)
+        mainIni.hotkeys.bindBandage = encodeJson(HotKeys.bindBandage.v)
         save()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
-    imgui.Text(u8 'Изменить кнопку ускорения в круизе')
-    -- cruise control slow down
-    if imgui.HotKey("##HotKeys.cruise_control_slow_down", HotKeys.cruise_control_slow_down) then
-        rkeys.changeHotKey(ID_CRUISE_CONTROL_SLOW_DOWN, HotKeys.cruise_control_slow_down.v)
-        mainIni.hotkeys.cruise_control_slow_down = encodeJson(HotKeys.cruise_control_slow_down.v)
-        save()
-        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
-    end
-    imgui.SameLine()
-    imgui.Text(u8 'Изменить кнопку замедления в круизе')
+    imgui.Text(u8 'Изменить кнопку активации использования бинтов')
 end
 
 function menu_10()
+    imgui.CenterText(u8 "Настройки")
+    imgui.Separator()
     local styles = { u8 "Серая", u8 "Красная", u8 "Фиолетовая", u8 "Чёрная", u8 "Синяя", u8 "Оранжевая", u8 "Розовая" }
     imgui.Combo(u8 'Стиль интерфейса', elements.int.intImGui, styles)
-    imgui.Separator()
     -- if imadd.ToggleButton("##idDialog", State.CheckBoxDialogID) then
     --     if State.CheckBoxDialogID.v then
     --         sampAddChatMessage("[Подсказка] {FFFFFF}Dialog ID {01DF01}включён{ffffff}.", State.main_color)
@@ -1852,30 +2329,6 @@ function menu_10()
     -- end
     -- imgui.SameLine()
     -- imgui.TextColoredRGB('[Выкл/Вкл]  {FF0000}Dialog ID')
-end
-
-function renderLeftPanel()
-    imgui.BeginChild("##left", imgui.ImVec2(180, 400), true)
-
-    local menuButtons = {
-        { text = u8 'Основное', menu = 1 },
-        { text = u8 'Auto Alert', menu = 2 },
-        { text = u8 'Auto Find', menu = 3 },
-        { text = u8 'Auto Fix (experimental)', menu = 4 },
-        { text = u8 'Skin Changer', menu = 5 },
-        { text = u8 'SS Tools', menu = 6 },
-        { text = u8 'Биндер', menu = 7 },
-        { text = u8 'Спец.Клавиши', menu = 9 },
-        { text = u8 'Настройки', menu = 10 }
-    }
-
-    for _, button in ipairs(menuButtons) do
-        if imgui.Button(button.text, imgui.ImVec2(155, 30)) then
-            State.menu = button.menu
-        end
-    end
-
-    imgui.EndChild()
 end
 
 function brown()
