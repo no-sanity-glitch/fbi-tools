@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.0.11')
+script_version('1.0.10')
 
 local CONFIG = {
     AUTO_UPDATE = true,
@@ -83,6 +83,9 @@ local mainIni = inicfg.load({
         backup = encodeJson({ vkeys.VK_U }),
         su = encodeJson({ vkeys.VK_I }),
         crosshair = encodeJson({ vkeys.VK_DELETE }),
+        cruise_control_state = encodeJson({ vkeys.VK_NUMPAD8 }),
+        cruise_control_speed_up = encodeJson({ vkeys.VK_MULTIPLY }),
+        cruise_control_slow_down = encodeJson({ vkeys.VK_SUBTRACT }),
     },
     state = {
         auto_alert = false,
@@ -176,6 +179,11 @@ local SkinChanger = {
     selectedSkin = mainIni.config.skin
 }
 
+local CruiseControl = {
+    state = false,
+    speed = 0,
+}
+
 local elements = {
     checkbox = {},
     static = { nameStatis = imgui.ImBool(mainIni.admin.nameTitle) },
@@ -188,6 +196,9 @@ local HotKeys = {
     backup = { v = decodeJson(mainIni.hotkeys.backup) },
     su = { v = decodeJson(mainIni.hotkeys.su) },
     crosshair = { v = decodeJson(mainIni.hotkeys.crosshair) },
+    cruise_control_state = { v = decodeJson(mainIni.hotkeys.cruise_control_state) },
+    cruise_control_speed_up = { v = decodeJson(mainIni.hotkeys.cruise_control_speed_up) },
+    cruise_control_slow_down = { v = decodeJson(mainIni.hotkeys.cruise_control_slow_down) },
 }
 
 local pearsSkins = {}
@@ -652,19 +663,42 @@ function registerHotkeys()
     ID_BACKUP = rkeys.registerHotKey(HotKeys.backup.v, 1, backup)
     ID_SU = rkeys.registerHotKey(HotKeys.su.v, 1, su)
     ID_CROSSHAIR = rkeys.registerHotKey(HotKeys.crosshair.v, 1, crosshair)
+    ID_CRUISE_CONTROL_STATE = rkeys.registerHotKey(HotKeys.cruise_control_state.v, 1, cruiseControlState)
+    ID_CRUISE_CONTROL_SPEED_UP = rkeys.registerHotKey(HotKeys.cruise_control_speed_up.v, 1, function()
+        CruiseControl.speed = CruiseControl.speed + 2.5
+    end)
+    ID_CRUISE_CONTROL_SLOW_DOWN = rkeys.registerHotKey(HotKeys.cruise_control_slow_down.v, 1, function()
+        CruiseControl.speed = CruiseControl.speed - 2.5
+    end)
+end
+
+function cruiseControlState()
+    if isCharInAnyCar(playerPed) then
+        CruiseControl.state = not CruiseControl.state
+        if CruiseControl.state then
+            CruiseControl.speed = getCarSpeed(storeCarCharIsInNoSave(playerPed))
+        end
+    end
 end
 
 function initializeMainThread()
-    lua_thread.create(function()
-        while true do
-            imgui.Process = State.main_window.v
-            handleStroboscopes()
-            handleSkinChanger()
-            handleAutoFix()
-            handleCrosshairHold()
-            wait(0)
+    while true do
+        imgui.Process = State.main_window.v
+        lua_thread.create(handleStroboscopes)
+        lua_thread.create(handleSkinChanger)
+        lua_thread.create(handleAutoFix)
+        lua_thread.create(handleCrosshairHold)
+        lua_thread.create(handleCruiseControl)
+        wait(0)
+    end
+end
+
+function handleCruiseControl()
+    if isCharInAnyCar(playerPed) and CruiseControl.state then
+        if getCarSpeed(storeCarCharIsInNoSave(playerPed)) < CruiseControl.speed then
+            writeMemory(0xB73458 + 0x20, 1, 255, false)
         end
-    end)
+    end
 end
 
 function crosshair()
@@ -1775,7 +1809,34 @@ function menu_9()
         sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
     end
     imgui.SameLine()
-    imgui.Text(u8 'Изменить кнопку активации Battle Pass')
+    imgui.Text(u8 'Изменить кнопку активации задержки прицела')
+    -- cruise control state
+    if imgui.HotKey("##HotKeys.cruise_control_state", HotKeys.cruise_control_state) then
+        rkeys.changeHotKey(ID_CRUISE_CONTROL_STATE, HotKeys.cruise_control_state.v)
+        mainIni.hotkeys.cruise_control_state = encodeJson(HotKeys.cruise_control_state.v)
+        save()
+        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+    end
+    imgui.SameLine()
+    imgui.Text(u8 'Изменить кнопку активации круиз контроля')
+    -- cruise control speed up
+    if imgui.HotKey("##HotKeys.cruise_control_speed_up", HotKeys.cruise_control_speed_up) then
+        rkeys.changeHotKey(ID_CRUISE_CONTROL_SPEED_UP, HotKeys.cruise_control_speed_up.v)
+        mainIni.hotkeys.cruise_control_speed_up = encodeJson(HotKeys.cruise_control_speed_up.v)
+        save()
+        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+    end
+    imgui.SameLine()
+    imgui.Text(u8 'Изменить кнопку ускорения в круизе')
+    -- cruise control slow down
+    if imgui.HotKey("##HotKeys.cruise_control_slow_down", HotKeys.cruise_control_slow_down) then
+        rkeys.changeHotKey(ID_CRUISE_CONTROL_SLOW_DOWN, HotKeys.cruise_control_slow_down.v)
+        mainIni.hotkeys.cruise_control_slow_down = encodeJson(HotKeys.cruise_control_slow_down.v)
+        save()
+        sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+    end
+    imgui.SameLine()
+    imgui.Text(u8 'Изменить кнопку замедления в круизе')
 end
 
 function menu_10()
