@@ -104,6 +104,7 @@ local mainIni = inicfg.load({
         bind_incar = false,
         bind_eject = false,
         bind_arest = false,
+        cruise_control = false,
     },
     infopanel = {
         infoPanel = false,
@@ -165,6 +166,7 @@ local State = {
     main_color = mainIni.config.intImGui,
     skinSearch = imgui.ImBuffer(256),
     crosshair_state = false,
+    cruise_control = imgui.ImBool(mainIni.state.cruise_control),
 
     -- BINDS
     show_cuff_text_edit = imgui.ImBool(false),
@@ -709,14 +711,19 @@ function registerHotkeys()
     ID_CROSSHAIR = rkeys.registerHotKey(HotKeys.crosshair.v, 1, crosshair)
     ID_CRUISE_CONTROL_STATE = rkeys.registerHotKey(HotKeys.cruise_control_state.v, 1, cruiseControlState)
     ID_CRUISE_CONTROL_SPEED_UP = rkeys.registerHotKey(HotKeys.cruise_control_speed_up.v, 1, function()
-        CruiseControl.speed = CruiseControl.speed + 2.5
+        if State.cruise_control.v then
+            CruiseControl.speed = CruiseControl.speed + 2.5
+        end
     end)
     ID_CRUISE_CONTROL_SLOW_DOWN = rkeys.registerHotKey(HotKeys.cruise_control_slow_down.v, 1, function()
-        CruiseControl.speed = CruiseControl.speed - 2.5
+        if State.cruise_control.v then
+            CruiseControl.speed = math.max(CruiseControl.speed - 2.5, 0)
+        end
     end)
 end
 
 function cruiseControlState()
+    if not State.cruise_control.v then return end
     if isCharInAnyCar(playerPed) then
         CruiseControl.state = not CruiseControl.state
         if CruiseControl.state then
@@ -1731,7 +1738,7 @@ function renderInfoPanel()
                 end
                 if CruiseControl.state then
                     imgui.Separator()
-                    imgui.CenterText(u8("Скорость круиза: %.0f"):format(CruiseControl.speed * 2))
+                    imgui.CenterText(u8("Скорость круиза: %.0f km/h"):format(CruiseControl.speed * 2))
                 end
             else
                 imgui.Text(u8 "Функции отключены")
@@ -1914,8 +1921,15 @@ function menu_3()
 end
 
 function menu_4()
-    imgui.CenterText(u8 "Круиз Контроль")
-    imgui.Separator() -- cruise control state
+    if imadd.ToggleButton("##cruise_control", State.cruise_control) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Круиз контроль " ..
+            (State.cruise_control.v and "{01DF01}включён" or "{ff0000}отключён") .. "{ffffff}.", State.main_color)
+        mainIni.state.cruise_control = State.cruise_control.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.Text(u8 "Круиз Контроль")
     if imgui.HotKey("##HotKeys.cruise_control_state", HotKeys.cruise_control_state) then
         rkeys.changeHotKey(ID_CRUISE_CONTROL_STATE, HotKeys.cruise_control_state.v)
         mainIni.hotkeys.cruise_control_state = encodeJson(HotKeys.cruise_control_state.v)
