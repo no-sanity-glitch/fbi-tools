@@ -46,7 +46,7 @@ if enable_autoupdate then
             Update.json_url =
                 "https://raw.githubusercontent.com/no-sanity-glitch/fbi-tools/refs/heads/main/version.json?" ..
                 tostring(os.clock())
-            Update.prefix = "{AC0046}[Tools]: "
+            Update.prefix = "{AC0046}[Tools] {FFFF00}"
             Update.url = "https://github.com/no-sanity-glitch/fbi-tools/"
         end
     end
@@ -93,7 +93,6 @@ local mainIni = inicfg.load({
         auto_alert = false,
         auto_find = false,
         auto_fix = false,
-        stroboscopes = false,
         cfgBindBattlePass = false,
         bindTazer = false,
         bindBandage = false,
@@ -144,7 +143,6 @@ end
 local State = {
     main_window = imgui.ImBool(false),
     CheckBoxDialogID = imgui.ImBool(false),
-    straboscopes = imgui.ImBool(mainIni.state.stroboscopes),
     bindBattlePass = imgui.ImBool(mainIni.state.cfgBindBattlePass),
     bindTazer = imgui.ImBool(mainIni.state.bindTazer),
     bindBandage = imgui.ImBool(mainIni.state.bindBandage),
@@ -608,45 +606,6 @@ function save()
     jsonSave(json, binds)
 end
 
--- Stroboscopes
-
-local carsStoroscopes = {}
-function table.contains(data, func)
-    for k, v in pairs(data) do
-        if func(k, v) then return true end
-    end
-    return false
-end
-
-function table.containsValue(data, value)
-    return table.contains(data, function(k, v)
-        if v == value then return true end
-        return false
-    end)
-end
-
-function table.getValueKey(data, value)
-    for k, v in pairs(data) do
-        if v == value then return k end
-    end
-    return nil
-end
-
-function stroboscopes(adress, ptr, _1, _2, _3, _4) -- функция стробоскопов
-    if not isCharInAnyCar(PLAYER_PED) then return end
-
-    if not isCarSirenOn(storeCarCharIsInNoSave(PLAYER_PED)) then
-        forceCarLights(storeCarCharIsInNoSave(PLAYER_PED), 0)
-        callMethod(7086336, ptr, 2, 0, 1, 3)
-        callMethod(7086336, ptr, 2, 0, 0, 0)
-        callMethod(7086336, ptr, 2, 0, 1, 0)
-        markCarAsNoLongerNeeded(storeCarCharIsInNoSave(PLAYER_PED))
-        return
-    end
-
-    callMethod(adress, ptr, _1, _2, _3, _4)
-end
-
 function main()
     while not isSampAvailable() do wait(100) end
     if autoupdate_loaded and enable_autoupdate and Update then
@@ -680,20 +639,6 @@ function registerChatCommands()
 
     sampRegisterChatCommand('cc', function()
         for i = 1, 30 do sampAddChatMessage('', -1) end
-    end)
-
-    sampRegisterChatCommand("strobes", function()
-        if State.straboscopes.v then
-            if isCharInAnyCar(PLAYER_PED) then
-                local car = storeCarCharIsInNoSave(PLAYER_PED)
-                local driverPed = getDriverOfCar(car)
-
-                if PLAYER_PED == driverPed then
-                    local state = not isCarSirenOn(car)
-                    switchCarSiren(car, state)
-                end
-            end
-        end
     end)
 
     sampRegisterChatCommand('cuff', bind_cuff)
@@ -738,7 +683,6 @@ function initializeMainThread()
     while true do
         imgui.Process = State.main_window.v or InfoPanel.infoPanel.v
         if InfoPanel.infoPanel.v then imgui.ShowCursor = false end
-        lua_thread.create(handleStroboscopes)
         lua_thread.create(handleSkinChanger)
         lua_thread.create(handleAutoFix)
         lua_thread.create(handleCrosshairHold)
@@ -800,45 +744,6 @@ function handleAutoFix()
                         if not isCarEngineOn(car) then
                             sampSendChat("/tehveh")
                         end
-                    end
-                end
-            end
-        end
-    end
-end
-
-function handleStroboscopes()
-    if not State.straboscopes.v then return end
-    if wasKeyPressed(VK_P) and not sampIsChatInputActive() and not sampIsDialogActive() then
-        if isCharInAnyCar(PLAYER_PED) and
-            not isCharInAnyBoat(PLAYER_PED) and
-            not isCharInAnyHeli(PLAYER_PED) and
-            not isCharInAnyPlane(PLAYER_PED) and
-            not isCharOnAnyBike(PLAYER_PED) and
-            not isCharInAnyTrain(PLAYER_PED) then
-            local carHandle = storeCarCharIsInNoSave(PLAYER_PED)
-            if getDriverOfCar(carHandle) == PLAYER_PED then
-                local res, id = sampGetVehicleIdByCarHandle(carHandle)
-                if res then
-                    local structure = getCarPointer(carHandle)
-                    structure = structure + 1440
-                    if carsStoroscopes[id] ~= nil then
-                        carsStoroscopes[id]:terminate()
-                        carsStoroscopes[id] = nil
-                        callMethod(7086336, structure, 2, 0, 0, 0)
-                        callMethod(7086336, structure, 2, 0, 1, 0)
-                    else
-                        carsStoroscopes[id] = lua_thread.create_suspended(function()
-                            while true do
-                                callMethod(7086336, structure, 2, 0, 1, 0)
-                                callMethod(7086336, structure, 2, 0, 0, 1)
-                                wait(100)
-                                callMethod(7086336, structure, 2, 0, 0, 0)
-                                callMethod(7086336, structure, 2, 0, 1, 1)
-                                wait(100)
-                            end
-                        end)
-                        carsStoroscopes[id]:run()
                     end
                 end
             end
@@ -1133,13 +1038,14 @@ local changelog11 = [[
 5. Добалвен бинд для бинтов /bandage.
 6. Добавлен круиз-контроль.
 7. Добавлена задержка прицела для отыгровок.
+8. Временно удалены стробоскопы.
 ]]
 
 local authors = [[
 
     Спасибо за помощь:
 
-    — Amelia Brown (режим IC-only чата и его очистка).
+    — Davarius Crawford (режим IC-only чата и его очистка).
 ]]
 
 function welcomeMenu()
@@ -1751,23 +1657,6 @@ end
 function menu_1()
     imgui.CenterText(u8 'Добро пожаловать, ' .. getMyNickSpec())
     imgui.Separator()
-
-    --STROBES
-    if imadd.ToggleButton("##straboscopes", State.straboscopes) then
-        if State.straboscopes.v then
-            sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {01DF01}включены{ffffff}.", State.main_color)
-            mainIni.state.stroboscopes = true
-            save()
-        else
-            sampAddChatMessage("[Tools] {FFFFFF}Стробоскопы {ff0000}отключены{ffffff}.", State.main_color)
-            mainIni.state.stroboscopes = false
-            save()
-        end
-    end
-    imgui.SameLine()
-    imgui.Text(u8 "Стробоскопы")
-    imgui.SameLine()
-    imgui.HelpMarker(u8 "Активация сирены /strobes | Активация стробоскопов P")
 
     -- BATTLEPASS
     if imadd.ToggleButton("##bindBattlePass", State.bindBattlePass) then
