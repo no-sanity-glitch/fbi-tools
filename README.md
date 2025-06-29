@@ -29,6 +29,7 @@
 ![Menu 5](screenshots/5.png)
 ![Menu 6](screenshots/6.png)
 ![Menu 7](screenshots/7.png)
+![Info Panel](screenshots/11.png)
 ![Menu 8](screenshots/8.png)
 ![Menu 9](screenshots/9.png)
 ![Menu 10](screenshots/10.png)
