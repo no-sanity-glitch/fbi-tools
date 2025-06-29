@@ -1,7 +1,7 @@
 # FBI Tools
 ## Функции:
 <ol>
-<li>Cтробоскопы. Активация сирены /strobes | Активация стробоскопов P.</li>
+<li>~~Cтробоскопы. Активация сирены /strobes | Активация стробоскопов P.~~</li>
 <li>Cмена погоды. Команда /sw [0-45].</li>
 <li>Отключение ООС чата. Команда /ss.</li>
 <li>Чёрный экран.</li>
@@ -30,3 +30,5 @@
 ![Menu 6](screenshots/6.png)
 ![Menu 7](screenshots/7.png)
 ![Menu 8](screenshots/8.png)
+![Menu 9](screenshots/9.png)
+![Menu 10](screenshots/10.png)
