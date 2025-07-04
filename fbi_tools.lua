@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.1.0')
+script_version('1.1.1')
 
 local CONFIG = {
     AUTO_UPDATE = true,
@@ -560,17 +560,17 @@ local skins = {
 
 local BinderActions = {
     {
-        pattern = "%* Вы ведёте за собой ([%w_]+)%.",
+        pattern = "%* Вы ведёте за собой (%w+)_?%w*%.",
         bindKey = "fme_text",
         isEnabled = function() return Binder.fme.v end
     },
     {
-        pattern = "Я посадил ([%w_]+) в машину",
+        pattern = "Я посадил (%w+)_?%w* в машину",
         bindKey = "incar_text",
         isEnabled = function() return Binder.incar.v end
     },
     {
-        pattern = "Я выкинул ([%w_]+) из транспорта",
+        pattern = "Я выкинул (%w+)_?%w* из транспорта",
         bindKey = "eject_text",
         isEnabled = function() return Binder.eject.v end
     }
@@ -612,7 +612,6 @@ function main()
         pcall(Update.check, Update.json_url, Update.prefix, Update.url)
     end
 
-    updateFPS()
     loadBinds()
     loadPearsLauncherSkins()
     concatSkins()
@@ -1365,53 +1364,53 @@ function loadBinds()
 end
 
 function bind_cuff(param)
-    local id = tonumber(param)
-    if not id then
-        sampAddChatMessage('{CCCCCC}[ Мысли ]: Заковать в наручники [ /cuff ID ]', -1)
-        return
-    end
-
-    if State.binder.v and Binder.cuff.v then
-        lua_thread.create(function()
-            local message = formatWithName(u8:decode(binds['cuff_text']), id)
-            handle_binder_cmd(message, '/cuff ', id)
-        end)
-    else
-        sampSendChat('/cuff ' .. id)
-    end
+    bind_action(param, {
+        key = 'cuff',
+        textKey = 'cuff_text',
+        maxDistance = 2,
+        hint = 'Заковать в наручники [ /cuff ID ]'
+    })
 end
 
 function bind_frisk(param)
-    local id = tonumber(param)
-    if not id then
-        sampAddChatMessage('{CCCCCC}[ Мысли ]: Обыскать игрока [ /frisk ID ]', -1)
-        return
-    end
-
-    if State.binder.v and Binder.frisk.v then
-        lua_thread.create(function()
-            local message = formatWithName(u8:decode(binds['frisk_text']), id)
-            handle_binder_cmd(message, '/frisk ', id)
-        end)
-    else
-        sampSendChat('/frisk ' .. id)
-    end
+    bind_action(param, {
+        key = 'frisk',
+        textKey = 'frisk_text',
+        maxDistance = 3,
+        hint = 'Обыскать игрока [ /frisk ID ]'
+    })
 end
 
 function bind_arest(param)
+    bind_action(param, {
+        key = 'arest',
+        textKey = 'arest_text',
+        hint = 'Посадить преступника [ /arest ID ]'
+    })
+end
+
+function bind_action(param, options)
     local id = tonumber(param)
     if not id then
-        sampAddChatMessage('{CCCCCC}[ Мысли ]: Посадить преступника [ /arest ID ]', -1)
+        sampAddChatMessage('{CCCCCC}[ Мысли ]: ' .. options.hint, -1)
         return
     end
 
-    if State.binder.v and Binder.arest.v then
+    if options.maxDistance then
+        local distance = getDistanceToPlayer(id)
+        if not distance or distance > options.maxDistance then
+            sampAddChatMessage('{CCCCCC}[ Мысли ]: Я слишком далеко.', -1)
+            return
+        end
+    end
+
+    if State.binder.v and Binder[options.key].v then
         lua_thread.create(function()
-            local message = formatWithName(u8:decode(binds['arest_text']), id)
-            handle_binder_cmd(message, '/arest ', id)
+            local message = formatWithName(u8:decode(binds[options.textKey]), id)
+            handle_binder_cmd(message, '/' .. options.key .. ' ', id)
         end)
     else
-        sampSendChat('/arest ' .. id)
+        sampSendChat('/' .. options.key .. ' ' .. id)
     end
 end
 
@@ -1420,7 +1419,7 @@ function formatWithName(msg, arg)
     if not sampIsPlayerConnected(id) then return nil end
     local nickname = sampGetPlayerNickname(id)
     local name = nickname:match("([^_]+)")
-    return (msg):format(name)
+    return msg:format(name)
 end
 
 function handle_binder_cmd(msg, cmd, id)
@@ -1431,6 +1430,30 @@ function handle_binder_cmd(msg, cmd, id)
     else
         sampAddChatMessage("[Tools] {FFFFFF}Игрок не подключён.", State.main_color)
     end
+end
+
+function getDistanceToPlayer(playerId)
+    if not tonumber(playerId) then return end
+
+    local px, py, pz = getCharCoordinates(PLAYER_PED)
+    local targetX, targetY, targetZ = getPlayerCharCoordinates(playerId)
+
+    if targetX then
+        return getDistanceBetweenCoords3d(px, py, pz, targetX, targetY, targetZ)
+    end
+
+    return nil
+end
+
+function getPlayerCharCoordinates(playerId)
+    if not sampIsPlayerConnected(playerId) then return nil end
+
+    local result, ped = sampGetCharHandleBySampPlayerId(playerId)
+    if not result or not doesCharExist(ped) then return nil end
+
+    local success, x, y, z = pcall(getCharCoordinates, ped)
+    if success then return x, y, z end
+    return nil
 end
 
 function imgui.OnDrawFrame()
@@ -1557,32 +1580,14 @@ function getMyPing()
     return nil
 end
 
--------------GetMyFPS---------------
-local currentFPS = 0
-local lastTick = 0
-local frameCounter = 0
-
-function updateFPS()
-    lua_thread.create(function()
-        while true do
-            wait(0)
-            frameCounter = frameCounter + 1
-            local now = os.clock()
-            if now - lastTick >= 1 then
-                currentFPS = frameCounter
-                frameCounter = 0
-                lastTick = now
-            end
-        end
-    end)
+function getCardinalDirection(angle)
+    local directions = {
+        "С", "СЗ", "З", "ЮЗ",
+        "Ю", "ЮВ", "В", "СВ"
+    }
+    local index = math.floor(((angle + 22.5) % 360) / 45) + 1
+    return directions[index]
 end
-
-function getMyFPS()
-    return currentFPS
-end
-
--------------------------------------
-
 
 function renderInfoPanel()
     if InfoPanel.btnInfoPanel.v then
@@ -1620,7 +1625,8 @@ function renderInfoPanel()
                     imgui.CenterText(fa.ICON_USER ..
                         u8 " " .. getMyNickSpec())
                 end
-                if InfoPanel.btnInfoPanelCity.v then imgui.CenterText(fa.ICON_MAP_MARKER .. u8 " " .. getMyCity()) end
+                if InfoPanel.btnInfoPanelCity.v then imgui.CenterText(fa.ICON_MAP_MARKER ..
+                    u8 " " .. getMyCity() .. u8 " [" .. u8(getCardinalDirection(getCharHeading(PLAYER_PED))) .. u8 "]") end
                 if InfoPanel.btnInfoPanelZone.v then imgui.CenterText(u8 " " .. getZoneName()) end
                 if InfoPanel.btnInfoPanelPing.v or InfoPanel.btnInfoPanelFPS.v then
                     local ping_fps_text = ''
@@ -1631,7 +1637,8 @@ function renderInfoPanel()
                         ping_fps_text = ping_fps_text .. u8 " | "
                     end
                     if InfoPanel.btnInfoPanelFPS.v then
-                        ping_fps_text = ping_fps_text .. fa.ICON_TACHOMETER .. u8 " " .. getMyFPS()
+                        ping_fps_text = ping_fps_text ..
+                        fa.ICON_TACHOMETER .. u8 " " .. string.format("%.0f", imgui.GetIO().Framerate)
                     end
                     local winWidth = imgui.GetWindowSize().x
                     local textWidth = imgui.CalcTextSize(ping_fps_text).x
