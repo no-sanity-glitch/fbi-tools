@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.1.1')
+script_version('1.1.2')
 
 local CONFIG = {
     AUTO_UPDATE = true,
@@ -88,6 +88,7 @@ local mainIni = inicfg.load({
         cruise_control_slow_down = encodeJson({ vkeys.VK_SUBTRACT }),
         bindTazer = encodeJson({ vkeys.VK_B }),
         bindBandage = encodeJson({ vkeys.VK_R }),
+        custom_backup = encodeJson({ vkeys.VK_P }),
     },
     state = {
         auto_alert = false,
@@ -104,6 +105,7 @@ local mainIni = inicfg.load({
         bind_eject = false,
         bind_arest = false,
         cruise_control = false,
+        custom_backup_state = false,
     },
     infopanel = {
         infoPanel = false,
@@ -149,6 +151,7 @@ local State = {
     binder = imgui.ImBool(mainIni.state.binder),
     auto_alert_state = imgui.ImBool(mainIni.state.auto_alert),
     auto_alert_backup_text_buffer = imgui.ImBuffer(256),
+    auto_alert_custom_backup_text_buffer = imgui.ImBuffer(256),
     binder_cuff_text_buffer = imgui.ImBuffer(256),
     binder_fme_text_buffer = imgui.ImBuffer(256),
     binder_frisk_text_buffer = imgui.ImBuffer(256),
@@ -165,6 +168,7 @@ local State = {
     skinSearch = imgui.ImBuffer(256),
     crosshair_state = false,
     cruise_control = imgui.ImBool(mainIni.state.cruise_control),
+    custom_backup_state = imgui.ImBool(mainIni.state.custom_backup_state),
 
     -- BINDS
     show_cuff_text_edit = imgui.ImBool(false),
@@ -180,7 +184,8 @@ local AutoAlert = {
     attackerCooldowns = {},
     suCooldowns = {},
     pendingAttacker = nil,
-    pendingExpireTime = 0
+    pendingExpireTime = 0,
+    lastGlobalCustomBackupTime = 0,
 }
 
 local AutoFind = {
@@ -243,6 +248,7 @@ local HotKeys = {
     cruise_control_slow_down = { v = decodeJson(mainIni.hotkeys.cruise_control_slow_down) },
     bindTazer = { v = decodeJson(mainIni.hotkeys.bindTazer) },
     bindBandage = { v = decodeJson(mainIni.hotkeys.bindBandage) },
+    custom_backup = { v = decodeJson(mainIni.hotkeys.custom_backup) },
 }
 
 local pearsSkins = {}
@@ -664,6 +670,7 @@ function registerHotkeys()
             CruiseControl.speed = math.max(CruiseControl.speed - 2.5, 0)
         end
     end)
+    ID_CUSTOM_BACKUP = rkeys.registerHotKey(HotKeys.custom_backup.v, 1, custom_backup)
 end
 
 function cruiseControlState()
@@ -1065,7 +1072,7 @@ function welcomeMenu()
     imgui.CenterText(u8 'Контакты:')
     imgui.CenterText(u8 'Saburo Arasaka ' .. fa.ICON_TELEGRAM .. ' - @goatffs')
     imgui.CenterText(u8 'Dave Grand ' .. fa.ICON_TELEGRAM .. ' - @daveamp')
-    imgui.CenterText(u8 'Amelia Brown ' .. fa.ICON_TELEGRAM .. ' - @wnenad')
+    imgui.CenterText(u8 'Davarius Crawford ' .. fa.ICON_TELEGRAM .. ' - @wnenad')
 end
 
 -- Auto Alert
@@ -1089,26 +1096,47 @@ function sampev.onSendTakeDamage(playerId, _, weapon, _, _)
     end
 end
 
-function backup()
+function tryBackup(config)
     if sampIsChatInputActive() or sampIsDialogActive() then return end
-    if mainIni.state.auto_alert then
-        if os.time() - AutoAlert.lastGlobalBackupTime >= CONFIG.BACKUP_INTERVAL then
-            callForBackup()
-            AutoAlert.lastGlobalBackupTime = os.time()
+    if config.enabled then
+        local now = os.time()
+        if now - config.lastTime >= CONFIG.BACKUP_INTERVAL then
+            sendBackupMessage(config.textKey, config.prefix)
+            config.lastTimeSetter(now)
         end
     end
 end
 
-function callForBackup()
+function sendBackupMessage(textKey, prefix)
     local zone = getZoneName()
-    local backup_message = u8:decode(binds['backup_text'])
-    local message = ("/r " .. backup_message):format(zone)
+    local backup_message = u8:decode(binds[textKey])
+    local message = (prefix or '') .. backup_message:gsub("#zone", zone)
     sampSendChat(message)
+end
+
+function backup()
+    tryBackup {
+        enabled = State.auto_alert_state.v,
+        lastTime = AutoAlert.lastGlobalBackupTime,
+        textKey = 'backup_text',
+        prefix = "/r ",
+        lastTimeSetter = function(t) AutoAlert.lastGlobalBackupTime = t end
+    }
+end
+
+function custom_backup()
+    tryBackup {
+        enabled = State.custom_backup_state.v,
+        lastTime = AutoAlert.lastGlobalCustomBackupTime,
+        textKey = 'custom_backup_text',
+        prefix = nil,
+        lastTimeSetter = function(t) AutoAlert.lastGlobalCustomBackupTime = t end
+    }
 end
 
 function su()
     if sampIsChatInputActive() or sampIsDialogActive() then return end
-    if mainIni.state.auto_alert then
+    if State.auto_alert_state.v then
         if AutoAlert.pendingAttacker and os.time() <= AutoAlert.pendingExpireTime then
             if not AutoAlert.suCooldowns[AutoAlert.pendingAttacker] or os.time() - AutoAlert.suCooldowns[AutoAlert.pendingAttacker] >= AutoAlert.SU_INTERVAL then
                 issueWanted(AutoAlert.pendingAttacker)
@@ -1344,23 +1372,66 @@ end
 -- Simple Binder
 
 function loadBinds()
-    if not doesDirectoryExist(getWorkingDirectory() .. '\\config') then
-        createDirectory(getWorkingDirectory() ..
-            '\\config')
+    local configPath = getWorkingDirectory() .. '\\config'
+    if not doesDirectoryExist(configPath) then
+        createDirectory(configPath)
     end
+
     if not doesFileExist(json) then
-        local t = {
-            ['backup_text'] = u8("Требуется подкрепление. Район %s."),
-            ['cuff_text'] = u8("/do Наручники на поясе."),
-            ['fme_text'] = u8("/me взял %s за бицепс и повёл перед собой."),
-            ['frisk_text'] = u8("/me ощупывает руки, ноги, торс %s, проверяя содержимое карманов."),
-            ['incar_text'] = u8("/me открыл дверь авто, помог %s сесть, пристегнул ремнями безопасности, закрыл дверь."),
-            ['eject_text'] = u8("/me открыл дверь авто, отстегнул ремни безопасности, помог %s выйти из авто."),
-            ['arest_text'] = u8("/me достал ключ от камеры, открыл дверь, завёл %s, снял наручники, захлопнул дверь."),
-        }
-        jsonSave(json, t)
+        jsonSave(json, getDefaultBinds())
     end
+
     binds = jsonRead(json)
+
+    migrateBinds(binds) -- temporarily, remove after few updates
+
+    local defaults = getDefaultBinds()
+    local updated = false
+    for k, v in pairs(defaults) do
+        if binds[k] == nil then
+            binds[k] = v
+            updated = true
+        end
+    end
+
+    if updated then
+        jsonSave(json, binds)
+    end
+end
+
+function getDefaultBinds()
+    return {
+        backup_text        = u8("Требуется подкрепление. Район #zone."),
+        cuff_text          = u8("/do Наручники на поясе."),
+        fme_text           = u8("/me взял #name за бицепс и повёл перед собой."),
+        frisk_text         = u8("/me ощупывает руки, ноги, торс #name, проверяя содержимое карманов."),
+        incar_text         = u8(
+            "/me открыл дверь авто, помог #name сесть, пристегнул ремнями безопасности, закрыл дверь."),
+        eject_text         = u8("/me открыл дверь авто, отстегнул ремни безопасности, помог #name выйти из авто."),
+        arest_text         = u8("/me достал ключ от камеры, открыл дверь, завёл #name, снял наручники, захлопнул дверь."),
+        -- Добавлять новые бинды тут:
+        custom_backup_text = u8("/d to SAPD: Требуется подкрепление. Район #zone."),
+    }
+end
+
+function migrateBinds(binds) -- temporarily, remove after few updates
+    local keyToToken = {
+        backup_text = "#zone",
+        cuff_text = "#name",
+        fme_text = "#name",
+        frisk_text = "#name",
+        incar_text = "#name",
+        eject_text = "#name",
+        arest_text = "#name",
+        custom_backup_text = "#zone",
+    }
+
+    for key, value in pairs(binds) do
+        if type(value) == "string" and keyToToken[key] then
+            local newToken = keyToToken[key]
+            binds[key] = value:gsub("%%s", newToken, 1)
+        end
+    end
 end
 
 function bind_cuff(param)
@@ -1419,7 +1490,7 @@ function formatWithName(msg, arg)
     if not sampIsPlayerConnected(id) then return nil end
     local nickname = sampGetPlayerNickname(id)
     local name = nickname:match("([^_]+)")
-    return msg:format(name)
+    return msg:gsub("#name", name)
 end
 
 function handle_binder_cmd(msg, cmd, id)
@@ -1558,25 +1629,19 @@ function renderRightPanel()
     }
 
     local renderer = menuRenderers[State.menu]
-    if renderer then
-        renderer()
-    end
+    if renderer then renderer() end
 
     imgui.EndChild()
 end
 
 function getMyId()
     local result, id = sampGetPlayerIdByCharHandle(playerPed)
-    if result then
-        return id
-    end
+    if result then return id end
 end
 
 function getMyPing()
     local result, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-    if result then
-        return sampGetPlayerPing(id)
-    end
+    if result then return sampGetPlayerPing(id) end
     return nil
 end
 
@@ -1625,8 +1690,11 @@ function renderInfoPanel()
                     imgui.CenterText(fa.ICON_USER ..
                         u8 " " .. getMyNickSpec())
                 end
-                if InfoPanel.btnInfoPanelCity.v then imgui.CenterText(fa.ICON_MAP_MARKER ..
-                    u8 " " .. getMyCity() .. u8 " [" .. u8(getCardinalDirection(getCharHeading(PLAYER_PED))) .. u8 "]") end
+                if InfoPanel.btnInfoPanelCity.v then
+                    imgui.CenterText(fa.ICON_MAP_MARKER ..
+                        u8 " " ..
+                        getMyCity() .. u8 " [" .. u8(getCardinalDirection(getCharHeading(PLAYER_PED))) .. u8 "]")
+                end
                 if InfoPanel.btnInfoPanelZone.v then imgui.CenterText(u8 " " .. getZoneName()) end
                 if InfoPanel.btnInfoPanelPing.v or InfoPanel.btnInfoPanelFPS.v then
                     local ping_fps_text = ''
@@ -1638,7 +1706,7 @@ function renderInfoPanel()
                     end
                     if InfoPanel.btnInfoPanelFPS.v then
                         ping_fps_text = ping_fps_text ..
-                        fa.ICON_TACHOMETER .. u8 " " .. string.format("%.0f", imgui.GetIO().Framerate)
+                            fa.ICON_TACHOMETER .. u8 " " .. string.format("%.0f", imgui.GetIO().Framerate)
                     end
                     local winWidth = imgui.GetWindowSize().x
                     local textWidth = imgui.CalcTextSize(ping_fps_text).x
@@ -1758,7 +1826,18 @@ function menu_2()
         save()
     end
     imgui.SameLine()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Запрос о поддержке")
+    if imadd.ToggleButton("##custom_backup_state", State.custom_backup_state) then
+        sampAddChatMessage(
+            "[Tools] {FFFFFF}Кастомный запрос поддержки " ..
+            (State.custom_backup_state.v and "{01DF01}включён" or "{ff0000}отключён") .. "{ffffff}.", State.main_color)
+        mainIni.state.custom_backup_state = State.custom_backup_state.v
+        save()
+    end
+    imgui.SameLine()
+    imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
+    imgui.Text(u8 "Кастомный запрос поддержки")
     -- backup button
     if imgui.HotKey("##HotKeys.backup", HotKeys.backup) then
         rkeys.changeHotKey(ID_BACKUP, HotKeys.backup.v)
@@ -1780,13 +1859,35 @@ function menu_2()
     -- backup text
     imgui.Text(u8 'Изменить текст вызова поддержки')
     imgui.SameLine()
-    imgui.HelpMarker(u8 "Используйте #zone для указания района. Например: Требуется подкрепление. Район #zone.")
+    imgui.HelpMarker(u8 "Будет отправлено в /r. Используйте #zone для указания района. Например: Требуется подкрепление. Район #zone.")
 
-    State.auto_alert_backup_text_buffer.v = binds['backup_text']:gsub("%%s", "#zone")
+    State.auto_alert_backup_text_buffer.v = binds['backup_text']
     if imgui.InputText('##auto_alert_backup_text_buffer', State.auto_alert_backup_text_buffer) then
-        local backup_text = State.auto_alert_backup_text_buffer.v:gsub("#zone", "%%s")
+        local backup_text = State.auto_alert_backup_text_buffer.v
         binds['backup_text'] = backup_text
         save()
+    end
+    -- custom backup button
+    if State.custom_backup_state.v then
+        if imgui.HotKey("##HotKeys.custom_backup", HotKeys.custom_backup) then
+            rkeys.changeHotKey(ID_CUSTOM_BACKUP, HotKeys.custom_backup.v)
+            mainIni.hotkeys.custom_backup = encodeJson(HotKeys.custom_backup.v)
+            save()
+            sampAddChatMessage("[Подсказка] {FFFFFF}Новая клавиша назначена.", State.main_color)
+        end
+        imgui.SameLine()
+        imgui.Text(u8 'Изменить кнопку кастомного вызова поддержки')
+        -- custom backup text
+        imgui.Text(u8 'Изменить текст кастомного вызова поддержки')
+        imgui.SameLine()
+        imgui.HelpMarker(u8 "Укажите чат в который нужно отправлять. Используйте #zone для указания района. Например: /d to SAPD: Требуется подкрепление. Район #zone.")
+
+        State.auto_alert_custom_backup_text_buffer.v = binds['custom_backup_text']
+        if imgui.InputText('##auto_alert_custom_backup_text_buffer', State.auto_alert_custom_backup_text_buffer) then
+            local backup_text = State.auto_alert_custom_backup_text_buffer.v
+            binds['custom_backup_text'] = backup_text
+            save()
+        end
     end
 end
 
@@ -2019,10 +2120,10 @@ function menu_7()
     imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка наручников. /cuff")
     if State.show_cuff_text_edit.v then
-        State.binder_cuff_text_buffer.v = binds['cuff_text']:gsub("%%s", "#name")
+        State.binder_cuff_text_buffer.v = binds['cuff_text']
         imgui.PushItemWidth(-1)
         if imgui.InputText('##binder_cuff_text_buffer', State.binder_cuff_text_buffer) then
-            local text = State.binder_cuff_text_buffer.v:gsub("#name", "%%s")
+            local text = State.binder_cuff_text_buffer.v
             binds['cuff_text'] = text
             save()
         end
@@ -2047,10 +2148,10 @@ function menu_7()
     imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка вести за собой. /fme")
     if State.show_fme_text_edit.v then
-        State.binder_fme_text_buffer.v = binds['fme_text']:gsub("%%s", "#name")
+        State.binder_fme_text_buffer.v = binds['fme_text']
         imgui.PushItemWidth(-1)
         if imgui.InputText('##binder_fme_text_buffer', State.binder_fme_text_buffer) then
-            binds['fme_text'] = State.binder_fme_text_buffer.v:gsub("#name", "%%s")
+            binds['fme_text'] = State.binder_fme_text_buffer.v
             save()
         end
         imgui.PopItemWidth()
@@ -2075,10 +2176,10 @@ function menu_7()
     imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка обыска. /frisk")
     if State.show_frisk_text_edit.v then
-        State.binder_frisk_text_buffer.v = binds['frisk_text']:gsub("%%s", "#name")
+        State.binder_frisk_text_buffer.v = binds['frisk_text']
         imgui.PushItemWidth(-1)
         if imgui.InputText('##binder_frisk_text_buffer', State.binder_frisk_text_buffer) then
-            local text = State.binder_frisk_text_buffer.v:gsub("#name", "%%s")
+            local text = State.binder_frisk_text_buffer.v
             binds['frisk_text'] = text
             save()
         end
@@ -2104,10 +2205,10 @@ function menu_7()
     imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка /incar")
     if State.show_incar_text_edit.v then
-        State.binder_incar_text_buffer.v = binds['incar_text']:gsub("%%s", "#name")
+        State.binder_incar_text_buffer.v = binds['incar_text']
         imgui.PushItemWidth(-1)
         if imgui.InputText('##binder_incar_text_buffer', State.binder_incar_text_buffer) then
-            local text = State.binder_incar_text_buffer.v:gsub("#name", "%%s")
+            local text = State.binder_incar_text_buffer.v
             binds['incar_text'] = text
             save()
         end
@@ -2132,10 +2233,10 @@ function menu_7()
     imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка /eject")
     if State.show_eject_text_edit.v then
-        State.binder_eject_text_buffer.v = binds['eject_text']:gsub("%%s", "#name")
+        State.binder_eject_text_buffer.v = binds['eject_text']
         imgui.PushItemWidth(-1)
         if imgui.InputText('##binder_eject_text_buffer', State.binder_eject_text_buffer) then
-            local text = State.binder_eject_text_buffer.v:gsub("#name", "%%s")
+            local text = State.binder_eject_text_buffer.v
             binds['eject_text'] = text
             save()
         end
@@ -2160,10 +2261,10 @@ function menu_7()
     imgui.SetCursorPosY(imgui.GetCursorPosY() + 4)
     imgui.Text(u8 "Отыгровка /arest")
     if State.show_arest_text_edit.v then
-        State.binder_arest_text_buffer.v = binds['arest_text']:gsub("%%s", "#name")
+        State.binder_arest_text_buffer.v = binds['arest_text']
         imgui.PushItemWidth(-1)
         if imgui.InputText('##binder_arest_text_buffer', State.binder_arest_text_buffer) then
-            local text = State.binder_arest_text_buffer.v:gsub("#name", "%%s")
+            local text = State.binder_arest_text_buffer.v
             binds['arest_text'] = text
             save()
         end
