@@ -1,6 +1,6 @@
 script_name('FBI Tools')
 script_author('goatffs')
-script_version('1.1.2')
+script_version('1.1.3')
 
 local CONFIG = {
     AUTO_UPDATE = true,
@@ -922,7 +922,7 @@ function sampev.onServerMessage(color, text)
                 if name then
                     local template = binds[action.bindKey]
                     if template then
-                        local msg = u8:decode(template):format(name)
+                        local msg = u8:decode(template):gsub("#name", name)
                         sampSendChat(msg)
                     end
                     break
